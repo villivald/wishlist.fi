@@ -11,6 +11,7 @@ import { headers } from "next/headers";
 import { Brand } from "@/components/brand/brand";
 import { getAuth } from "@/features/auth/actions/get-auth";
 import { getHomePath } from "@/features/auth/utils/home-path";
+import { CookieSettings } from "@/features/privacy/components/privacy-preferences";
 import { Link } from "@/i18n/navigation";
 import { getText } from "@/i18n/server";
 import { communityLinks } from "@/lib/community-links";
@@ -110,6 +111,7 @@ export default async function Footer() {
           </section>
         </div>
         <div className={styles.bottom}>
+          <CookieSettings />
           <p>
             {t("Designed and built by")}{" "}
             <a href="https://www.villivald.com/">villivald</a> · ©{" "}

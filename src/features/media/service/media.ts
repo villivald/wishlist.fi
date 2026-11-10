@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { consumeRateLimit, lockUser } from "@/features/auth/service/security";
 import { publicOwners } from "@/features/discovery/service/access";
 import { readableWishes } from "@/features/wish/service/access";
@@ -172,8 +173,9 @@ export const readableImage = (id: string, userId: string | null) =>
     select: { id: true, pathname: true, provider: true, variantWidths: true },
   });
 
-export const readAvatar = (userId: string) =>
+export const readAvatar = cache((userId: string) =>
   prisma.media.findFirst({
     where: { userId, state: "READY", user: { emailVerified: true } },
     ...imageSelection,
-  });
+  }),
+);

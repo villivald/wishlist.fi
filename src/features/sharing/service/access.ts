@@ -12,7 +12,7 @@ export const lockSharing = async (
 ) => {
   // Coordinate cross-account membership/ownership writes with account deletion.
   // Always acquire this before user and list locks, matching deleteAccount.
-  await tx.$queryRaw`SELECT pg_advisory_xact_lock(8108, 1)::text`;
+  await tx.$queryRaw`SELECT pg_advisory_xact_lock_shared(8108, 1)::text`;
   await lockUser(tx, userId);
   const user = await tx.user.findFirst({
     where: {

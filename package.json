@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "build": "npm run localization:check && next build",
     "start": "next start",
     "lint": "eslint . --max-warnings=0",
     "lint-fix": "eslint . --fix",
@@ -16,7 +16,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "check": "npm run lint && npm run lint:css && npm run format:check && npm run type && npm test",
+    "check": "npm run localization:check && npm run lint && npm run lint:css && npm run format:check && npm run type && npm test",
     "inngest": "inngest-cli dev -u http://localhost:3000/api/inngest",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
@@ -38,7 +38,9 @@
     "billing:sync": "tsx scripts/reconcile-billing.ts",
     "operations:status": "tsx scripts/operations-status.ts",
     "operations:backup": "tsx scripts/backup-restore.ts",
-    "operations:recovery-drill": "tsx scripts/recovery-drill.ts"
+    "operations:recovery-drill": "tsx scripts/recovery-drill.ts",
+    "localization:generate": "node --import tsx scripts/client-translations.ts --write",
+    "localization:check": "node --import tsx scripts/client-translations.ts"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.2.1",

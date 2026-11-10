@@ -13,6 +13,30 @@ const options: Intl.DateTimeFormatOptions = {
   minute: "2-digit",
   timeZoneName: "short",
 };
+const dateOnlyOptions: Intl.DateTimeFormatOptions = {
+  year: "numeric",
+  month: "short",
+  day: "numeric",
+};
+
+const dateFormatters = new Map<string, Intl.DateTimeFormat>();
+
+const getDateFormatter = (
+  locale: string,
+  displayOptions: Intl.DateTimeFormatOptions,
+  utc = false,
+) => {
+  const key = `${locale}:${displayOptions === dateOnlyOptions ? "date" : "full"}:${utc ? "utc" : "local"}`;
+  let formatter = dateFormatters.get(key);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat(
+      locale,
+      utc ? { ...displayOptions, timeZone: "UTC" } : displayOptions,
+    );
+    dateFormatters.set(key, formatter);
+  }
+  return formatter;
+};
 
 export function LocalTime({
   value,
@@ -22,27 +46,19 @@ export function LocalTime({
   dateOnly?: boolean;
 }) {
   const locale = languageTag(useLocale());
-  const displayOptions: Intl.DateTimeFormatOptions = dateOnly
-    ? { year: "numeric", month: "short", day: "numeric" }
-    : options;
-  const fallback = new Intl.DateTimeFormat(locale, {
-    ...displayOptions,
-    timeZone: "UTC",
-  }).format(new Date(value));
+  const displayOptions = dateOnly ? dateOnlyOptions : options;
+  const date = new Date(value);
+  const fallback = getDateFormatter(locale, displayOptions, true).format(date);
   const label = useSyncExternalStore(
     subscribe,
-    () =>
-      new Intl.DateTimeFormat(locale, displayOptions).format(new Date(value)),
+    () => getDateFormatter(locale, displayOptions, false).format(date),
     () => fallback,
   );
 
   return (
     <time
       dateTime={value}
-      title={new Intl.DateTimeFormat(locale, {
-        ...options,
-        timeZone: "UTC",
-      }).format(new Date(value))}
+      title={getDateFormatter(locale, options, true).format(date)}
     >
       {label}
     </time>

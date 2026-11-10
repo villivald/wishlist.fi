@@ -43,7 +43,11 @@ run(process.execPath, [
 run(process.execPath, ["node_modules/prisma/build/index.js", "generate"]);
 if (process.argv.includes("--integration")) {
   process.env.INTEGRATION_TESTS = "1";
-  run(process.execPath, ["node_modules/vitest/vitest.mjs", "run"]);
+  run(process.execPath, [
+    "node_modules/vitest/vitest.mjs",
+    "run",
+    ...process.argv.slice(2).filter((arg) => arg !== "--integration"),
+  ]);
 } else {
   run(process.execPath, [
     "node_modules/@playwright/test/cli.js",

@@ -30,6 +30,7 @@ export function ListTheme({
           width={1000}
           height={700}
           sizes="(max-width: 760px) 100vw, 1100px"
+          preload={!compact}
           alt=""
         />
       )}

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { imageSelection } from "@/features/media/types";
 import { sharingPage } from "@/features/sharing/service/schemas";
 import type { Prisma } from "@/generated/prisma/client";
@@ -46,14 +47,15 @@ const wishFields = {
   image: imageSelection,
 } satisfies Prisma.WishSelect;
 
-export const resolveGuestLink = (token: unknown) =>
+export const resolveGuestLink = cache((token: unknown) =>
   prisma.guestLink.findFirst({
     where: {
       ...activeLink(token),
       wishlist: { archivedAt: null, publication: "PUBLISHED" },
     },
     select: { wishlistId: true, expiresAt: true },
-  });
+  }),
+);
 
 export const readGuestList = (listId: string, token: unknown) =>
   prisma.wishlist.findFirst({

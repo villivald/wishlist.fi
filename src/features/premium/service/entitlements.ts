@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { billingEnvironment } from "@/features/billing/service/config";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -20,9 +21,9 @@ export const premiumGrantEnvironmentWhere =
     };
   };
 
-export const readPremiumAccess = async (
+const queryPremiumAccess = async (
   userId: string,
-  db: Prisma.TransactionClient = prisma,
+  db: Prisma.TransactionClient,
 ) => {
   const now = new Date();
   const periods = await db.premiumGrant.findMany({
@@ -46,6 +47,18 @@ export const readPremiumAccess = async (
       : (periods.find((period) => period.startsAt > now)?.startsAt ?? null),
   };
 };
+
+const readCachedPremiumAccess = cache((userId: string) =>
+  queryPremiumAccess(userId, prisma),
+);
+
+export const readPremiumAccess = (
+  userId: string,
+  db: Prisma.TransactionClient = prisma,
+) =>
+  db === prisma
+    ? readCachedPremiumAccess(userId)
+    : queryPremiumAccess(userId, db);
 
 export const requirePremium = async (
   userId: string,

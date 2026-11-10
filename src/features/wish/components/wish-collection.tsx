@@ -136,7 +136,7 @@ export async function WishCollection({
               </h3>
               <div className={cardStyles["wish-facts"]}>
                 <p className={styles.price}>
-                  {formatWishPrice(wish.priceMinor, wish.currency, t.locale)}
+                  {formatWishPrice(wish.priceMinor, wish.currency, t)}
                 </p>
                 <WishPriority priority={wish.priority} />
               </div>

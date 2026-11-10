@@ -27,7 +27,11 @@ export function MainNavigation({
   const id = useId();
   const button = useRef<HTMLButtonElement>(null);
   const shortcuts = useRef<HTMLElement>(null);
+  const menuNav = useRef<HTMLElement>(null);
   const [labelsFit, setLabelsFit] = useState(false);
+  const [menu, setMenu] = useState({ pathname, open: false });
+  if (menu.pathname !== pathname) setMenu({ pathname, open: false });
+  const open = menu.pathname === pathname && menu.open;
 
   useEffect(() => {
     const navigation = shortcuts.current;
@@ -36,6 +40,12 @@ export function MainNavigation({
       "[data-shortcut-label]",
     );
     const measure = () => {
+      if (getComputedStyle(navigation).display === "none") {
+        setMenu((current) =>
+          current.open ? { pathname: current.pathname, open: false } : current,
+        );
+        return;
+      }
       setLabelsFit(
         Array.from(labels).every((label) => {
           const link = label.closest("a")!;
@@ -57,9 +67,25 @@ export function MainNavigation({
       document.fonts.removeEventListener("loadingdone", measure);
     };
   }, [items]);
-  const [menu, setMenu] = useState({ pathname, open: false });
-  if (menu.pathname !== pathname) setMenu({ pathname, open: false });
-  const open = menu.pathname === pathname && menu.open;
+
+  useEffect(() => {
+    if (!open) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (
+        target instanceof Node &&
+        !button.current?.contains(target) &&
+        !menuNav.current?.contains(target)
+      ) {
+        setMenu({ pathname, open: false });
+      }
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [open, pathname]);
+
   const secondaryActive = items.some((item) => {
     const match = item.match ?? item.href;
     return (
@@ -104,6 +130,8 @@ export function MainNavigation({
             ref={shortcuts}
             className={styles["quick-navigation"]}
             aria-label={t("Quick navigation")}
+            aria-hidden={open || undefined}
+            inert={open || undefined}
           >
             {items
               .filter((item) => item.shortcutLabel)
@@ -140,6 +168,7 @@ export function MainNavigation({
       )}
       <nav
         id={id}
+        ref={menuNav}
         aria-label={t("Main navigation")}
         className={`${styles.navigation} ${collapsible ? styles["member-navigation"] : ""}`}
       >

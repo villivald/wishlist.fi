@@ -8,12 +8,14 @@ export function MediaImage({
   compact = false,
   cover = false,
   guestListId,
+  priority = false,
   sizes = DETAIL_IMAGE_SIZES,
 }: {
   image: ImageDetails | null;
   compact?: boolean;
   cover?: boolean;
   guestListId?: string;
+  priority?: boolean;
   sizes?: string;
 }) {
   if (!image) {
@@ -40,6 +42,8 @@ export function MediaImage({
         alt={image.alt}
         width={image.width}
         height={image.height}
+        loading={priority ? "eager" : undefined}
+        fetchPriority={priority ? "high" : undefined}
         unoptimized
       />
     </picture>

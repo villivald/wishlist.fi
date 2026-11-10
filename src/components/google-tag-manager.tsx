@@ -1,23 +1,24 @@
 import Script from "next/script";
+import { googleConsent } from "@/features/privacy/preferences";
 
-export default function GoogleTagManager() {
-  // Keep local development and Vercel preview traffic out of Ads measurements.
-  if (process.env.VERCEL_ENV !== "production") return null;
-
+export default function GoogleTagManager({
+  analytics,
+}: {
+  analytics: boolean;
+}) {
   return (
-    <>
-      <Script id="google-tag-manager-init" strategy="afterInteractive">
-        {`
+    <Script id="google-tag-manager-init" strategy="afterInteractive">
+      {`
           window.dataLayer = window.dataLayer || [];
           window.gtag = function gtag() { window.dataLayer.push(arguments); };
-          window.gtag('js', new Date());
+          window.gtag('consent', 'default', ${JSON.stringify(googleConsent({ analytics: false, marketing: false }))});
+          window.gtag('consent', 'update', ${JSON.stringify(googleConsent({ analytics, marketing: true }))});
+          window.dataLayer.push({'gtm.start': new Date().getTime(), event: 'gtm.js'});
+          const script = document.createElement('script');
+          script.async = true;
+          script.src = 'https://www.googletagmanager.com/gtm.js?id=GTM-MWND8GRB';
+          document.head.appendChild(script);
         `}
-      </Script>
-      <Script
-        id="google-tag-manager"
-        src="https://www.googletagmanager.com/gtm.js?id=GTM-MWND8GRB"
-        strategy="afterInteractive"
-      />
-    </>
+    </Script>
   );
 }

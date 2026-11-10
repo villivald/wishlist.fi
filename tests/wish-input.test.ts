@@ -5,6 +5,7 @@ import {
   parsePriceMinor,
   priceInputValue,
 } from "@/features/wish/utils/money";
+import { createText } from "@/i18n/text";
 
 describe("wish input", () => {
   it("accepts only a title and normalizes empty optional fields", () => {
@@ -29,7 +30,11 @@ describe("wish input", () => {
       });
       expect(wish.priceMinor).toBe(1999);
       expect(
-        formatWishPrice(wish.priceMinor, wish.currency).replace(/\s/g, " "),
+        formatWishPrice(
+          wish.priceMinor,
+          wish.currency,
+          createText("en"),
+        ).replace(/\s/g, " "),
       ).toBe(`${currency} 19.99`);
     },
   );
@@ -73,7 +78,9 @@ describe("wish input", () => {
     ).toMatchObject({ priceMinor: null, currency: null });
     expect(priceInputValue(0)).toBe("0.00");
     expect(priceInputValue(null)).toBe("");
-    expect(formatWishPrice(null, null)).toBe("No price added");
+    expect(formatWishPrice(null, null, createText("en"))).toBe(
+      "No price added",
+    );
   });
 
   it.each(["EUR", "USD", "GBP"])(

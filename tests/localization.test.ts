@@ -1,24 +1,65 @@
+import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import { toActionState } from "@/components/form/utils/to-action-state";
 import { safeReturnTo } from "@/features/auth/utils/return-to";
 import { formatWishPrice } from "@/features/wish/utils/money";
+import { clientTextKeys } from "@/i18n/client-keys";
 import { localizedPath, withoutLocale } from "@/i18n/config";
 import english from "@/i18n/messages/en.json";
 import finnish from "@/i18n/messages/fi.json";
-import { createText } from "@/i18n/text";
+import { clientCatalog, createText } from "@/i18n/text";
+import { createTranslator } from "@/i18n/translator";
+import {
+  localizationReferences,
+  runtimeStrings,
+} from "../scripts/localization-source";
 
 const placeholders = (text: string) =>
   [...text.matchAll(/\{(\w+)\}/g)].map((match) => match[1]).sort();
 
 describe("English and Finnish catalogs", () => {
-  it("keeps all keys and interpolation parameters aligned", () => {
+  it("uses runtime references rather than comments or types", () => {
+    const source = ts.createSourceFile(
+      "example.ts",
+      '// t("Dead comment")\ntype Label = "Dead type";\nconst title = t(\'Live message\');\nconst fallback = `Live template`;\n',
+      ts.ScriptTarget.Latest,
+      true,
+    );
+    expect([...runtimeStrings(source)].sort()).toEqual([
+      "Live message",
+      "Live template",
+    ]);
+  });
+  it("keeps server-only legal and email copy out of client dictionaries", () => {
+    expect(clientTextKeys).not.toContain(
+      "Hi {name}, thank you for choosing Wishlist Premium.",
+    );
+    expect(clientTextKeys).not.toContain(
+      "Account data is kept while your account exists. Shared content and reservation history can remain with a list after an account is deleted. The app does not automatically purge archived lists or all historical records after a fixed period.",
+    );
+    expect(clientTextKeys).toContain("No price added");
+    expect(clientTextKeys).toContain("Incorrect email or password");
+  });
+  it("keeps all keys and interpolation parameters aligned and free of unused entries", () => {
     expect(Object.keys(finnish).sort()).toEqual(Object.keys(english).sort());
+    const references = localizationReferences(Object.keys(english));
+    expect(references.unreferencedKeys).toEqual([]);
+    expect(references.clientCatalogLeaks).toEqual([]);
+    expect(clientTextKeys).toEqual(references.clientKeys);
+    const enClient = createTranslator("en", clientCatalog("en"));
+    const fiClient = createTranslator("fi", clientCatalog("fi"));
+    const enServer = createText("en");
+    const fiServer = createText("fi");
     for (const key of Object.keys(english) as (keyof typeof english)[]) {
       expect(finnish[key].trim(), key).not.toBe("");
       expect(placeholders(finnish[key]), key).toEqual(
         placeholders(english[key]),
       );
       if (key !== "{value0}…") expect(finnish[key], key).not.toBe(english[key]);
+      if ((clientTextKeys as readonly string[]).includes(key)) {
+        expect(enClient(key), key).toBe(enServer(key));
+        expect(fiClient(key), key).toBe(fiServer(key));
+      }
     }
   });
   it("renders Finnish plurals, prices, and safe message codes", () => {
@@ -32,8 +73,8 @@ describe("English and Finnish catalogs", () => {
     expect(t.plural("{count} public list", "{count} public lists", 2)).toBe(
       "2 julkista listaa",
     );
-    expect(formatWishPrice(1250, "EUR", "fi")).toMatch(/12,50\s+EUR/);
-    expect(formatWishPrice(null, null, "fi")).toBe("Hintaa ei ole lisätty");
+    expect(formatWishPrice(1250, "EUR", t)).toMatch(/12,50\s+EUR/);
+    expect(formatWishPrice(null, null, t)).toBe("Hintaa ei ole lisätty");
     const state = toActionState("ERROR", "Incorrect email or password");
     expect(state.messageCode).toBeDefined();
     expect(t.feedback({ ...state, message: "presentation text changed" })).toBe(

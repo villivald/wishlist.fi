@@ -39,6 +39,7 @@ export const readWishlist = async (id: string, userId: string | null) => {
     where: { id, ...readableLists(userId) },
     select: {
       ...listFields,
+      ownerId: true,
       owner: { select: { username: true } },
       memberships: {
         where: {
@@ -55,9 +56,10 @@ export const readWishlist = async (id: string, userId: string | null) => {
     return null;
   }
 
-  const { memberships, ...details } = list;
+  const { memberships, ownerId, ...details } = list;
+  const canManage = memberships.length > 0;
 
-  return { ...details, canManage: memberships.length > 0 };
+  return { ...details, canManage, ...(canManage ? { ownerId } : {}) };
 };
 
 export const readManagedWishlist = (id: string, userId: string) => {

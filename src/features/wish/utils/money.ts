@@ -1,11 +1,28 @@
 import { languageTag } from "@/i18n/config";
-import { createText } from "@/i18n/text";
+import type { createTranslator } from "@/i18n/translator";
 
 export const currencies = ["EUR", "USD", "GBP"] as const;
 
 export type WishCurrency = (typeof currencies)[number];
 
 export const MAX_PRICE_MINOR = 2_147_483_647;
+
+const currencyFormatters = new Map<string, Intl.NumberFormat>();
+
+const getCurrencyFormatter = (locale: string, currency: WishCurrency) => {
+  const tag = languageTag(locale);
+  const key = `${tag}:${currency}`;
+  let formatter = currencyFormatters.get(key);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(tag, {
+      style: "currency",
+      currency,
+      currencyDisplay: "code",
+    });
+    currencyFormatters.set(key, formatter);
+  }
+  return formatter;
+};
 
 export const parsePriceMinor = (value: string): number | null => {
   const trimmed = value.trim();
@@ -36,15 +53,11 @@ export const priceInputValue = (amount: number | null) =>
 export const formatWishPrice = (
   amount: number | null,
   currency: WishCurrency | null,
-  locale = "en",
+  t: ReturnType<typeof createTranslator>,
 ) => {
   if (amount === null || currency === null) {
-    return createText(locale)("No price added");
+    return t("No price added");
   }
 
-  return new Intl.NumberFormat(languageTag(locale), {
-    style: "currency",
-    currency,
-    currencyDisplay: "code",
-  }).format(amount / 100);
+  return getCurrencyFormatter(t.locale, currency).format(amount / 100);
 };

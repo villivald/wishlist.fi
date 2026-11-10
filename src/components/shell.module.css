@@ -1035,6 +1035,10 @@
     box-shadow: 0 0.75rem 1.5rem rgb(0 0 0 / 12%);
   }
 
+  .navigation-menu[data-open="true"] .quick-navigation {
+    visibility: hidden;
+  }
+
   .navigation-menu[data-open="true"] .member-navigation {
     display: grid;
   }
