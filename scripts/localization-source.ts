@@ -15,11 +15,36 @@ const sourceFiles = (directory: string): string[] =>
       : [];
   });
 
-export const runtimeStrings = (source: ts.SourceFile) => {
+export const runtimeStrings = (source: ts.Node) => {
   const values = new Set<string>();
   const visit = (node: ts.Node) => {
     if (ts.isTypeNode(node)) return;
     if (ts.isStringLiteralLike(node)) values.add(node.text);
+    ts.forEachChild(node, visit);
+  };
+  visit(source);
+  return values;
+};
+
+// Feedback crosses the server boundary as text, including API image replies and
+// application errors. Keep those catalog entries even without a browser import.
+export const runtimeFeedbackStrings = (source: ts.SourceFile) => {
+  const values = new Set<string>();
+  const visit = (node: ts.Node) => {
+    const argument =
+      ts.isCallExpression(node) && ts.isIdentifier(node.expression)
+        ? node.expression.text === "toActionState"
+          ? node.arguments[1]
+          : node.expression.text === "reply"
+            ? node.arguments[0]
+            : undefined
+        : ts.isNewExpression(node) &&
+            ts.isIdentifier(node.expression) &&
+            /Error$/.test(node.expression.text)
+          ? node.arguments?.[0]
+          : undefined;
+    if (argument)
+      runtimeStrings(argument).forEach((value) => values.add(value));
     ts.forEachChild(node, visit);
   };
   visit(source);
@@ -105,6 +130,9 @@ export const localizationReferences = (catalogKeys: readonly string[]) => {
       )
     )
       visitClientModule(filename);
+  }
+  for (const source of sources.values()) {
+    runtimeFeedbackStrings(source).forEach((value) => clientStrings.add(value));
   }
   const allStrings = new Set(
     [...sources.values()].flatMap((source) => [...runtimeStrings(source)]),

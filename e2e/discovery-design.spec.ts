@@ -459,7 +459,9 @@ test("wish images fill thumbnails, details keep their proportions and the grid u
     await expectImageLoaded(image);
     const bounds = await image.boundingBox();
     expect(bounds!.width / bounds!.height).toBeCloseTo(ratio, 1);
-    const frame = await page.locator('[class*="detail-image"]').boundingBox();
+    const frame = await page
+      .locator('[class*="detail-image"]:visible')
+      .boundingBox();
     expect(Math.abs(frame!.height - bounds!.height)).toBeLessThan(1);
     if (id === "book")
       await expect(

@@ -11,6 +11,7 @@ import { clientCatalog, createText } from "@/i18n/text";
 import { createTranslator } from "@/i18n/translator";
 import {
   localizationReferences,
+  runtimeFeedbackStrings,
   runtimeStrings,
 } from "../scripts/localization-source";
 
@@ -29,6 +30,42 @@ describe("English and Finnish catalogs", () => {
       "Live message",
       "Live template",
     ]);
+  });
+  it("finds feedback returned through actions, API replies, and application errors", () => {
+    const source = ts.createSourceFile(
+      "feedback.ts",
+      `const legal = "Server-only legal copy";
+       toActionState("SUCCESS", "Action feedback");
+       toActionState("PENDING", pending ? "Waiting" : "Ready");
+       reply("Image feedback", 200);
+       throw new WishlistError("Access feedback");`,
+      ts.ScriptTarget.Latest,
+      true,
+    );
+    expect([...runtimeFeedbackStrings(source)].sort()).toEqual([
+      "Access feedback",
+      "Action feedback",
+      "Image feedback",
+      "Ready",
+      "Waiting",
+    ]);
+  });
+  it("keeps server feedback localized in the reduced client catalog", () => {
+    const enClient = createTranslator("en", clientCatalog("en"));
+    const fiClient = createTranslator("fi", clientCatalog("fi"));
+    for (const key of [
+      "Billing details are up to date.",
+      "Paddle is temporarily unavailable. Your last confirmed billing details are shown. Try refreshing billing shortly.",
+      "Image saved.",
+      "Image removed.",
+      "List is now visible.",
+      "Changes saved.",
+      "This favorite is no longer available. Choose another person or enter an email address.",
+    ] as const) {
+      expect(clientTextKeys).toContain(key);
+      expect(enClient.message(key)).toBe(createText("en")(key));
+      expect(fiClient.message(key)).toBe(createText("fi")(key));
+    }
   });
   it("keeps server-only legal and email copy out of client dictionaries", () => {
     expect(clientTextKeys).not.toContain(

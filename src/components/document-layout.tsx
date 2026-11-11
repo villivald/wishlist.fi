@@ -55,11 +55,9 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function DocumentLayout({
   children,
   params,
-  marketing = false,
 }: {
   children: React.ReactNode;
   params: Promise<{ locale: string }>;
-  marketing?: boolean;
 }) {
   const { locale } = await params;
   if (!isLocale(locale)) notFound();
@@ -87,7 +85,6 @@ export default async function DocumentLayout({
           )}
           <PrivacyPreferences
             enabled={process.env.VERCEL_ENV === "production"}
-            marketing={marketing}
             preferences={privacy}
           >
             <ThemeProvider>

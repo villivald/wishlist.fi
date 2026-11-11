@@ -585,17 +585,19 @@ test("mobile shortcuts keep destinations visible and adapt labels without crowdi
     });
     await page.evaluate(() => document.fonts.ready);
     // Every visible caption fits its own target, independent of the locale.
-    for (const label of await shortcuts
-      .locator('[data-visible="true"]')
-      .all()) {
-      expect(
-        await label.evaluate(
-          (element) =>
-            element.getBoundingClientRect().width <=
-            element.closest("a")!.clientWidth,
-        ),
-      ).toBe(true);
-    }
+    await expect
+      .poll(() =>
+        shortcuts
+          .locator('[data-visible="true"]')
+          .evaluateAll((labels) =>
+            labels.every(
+              (label) =>
+                label.getBoundingClientRect().width <=
+                label.closest("a")!.clientWidth,
+            ),
+          ),
+      )
+      .toBe(true);
     await page.screenshot({
       path: info.outputPath(`mobile-shortcuts-${locale}-375.png`),
       scale: "css",

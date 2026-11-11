@@ -9,7 +9,7 @@ const installTrackingStubs = async (page: Page) => {
     googleRequests.push(route.request().url());
     return route.fulfill({
       contentType: "application/javascript",
-      body: "window.__googleTagLoaded = true; window.__googleSeenUrls = [location.href]; history.pushState = new Proxy(history.pushState, {apply(target, self, args) { window.__googleSeenUrls.push(String(args[2])); return Reflect.apply(target, self, args); }});",
+      body: "window.__googleTagLoaded = true;",
     });
   });
   await page.route("**/_vercel/**", (route) => {
@@ -52,17 +52,20 @@ test("nothing loads before consent; choices isolate services and withdrawal unlo
     ),
   ).toBe(true);
 
-  // A script installed in the old document must not see app navigation.
+  // Consent continues to apply when moving from information pages into the app.
+  const documentId = await page.evaluate(() => performance.timeOrigin);
   await page.getByRole("link", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/en\/sign-in$/);
+  expect(await page.evaluate(() => performance.timeOrigin)).toBe(documentId);
   expect(
     await page.evaluate(
       () =>
         (window as Window & { __googleTagLoaded?: boolean }).__googleTagLoaded,
     ),
-  ).toBeUndefined();
+  ).toBe(true);
   await page.goBack();
   await expect(page).toHaveURL(/\/en\/premium$/);
+  expect(await page.evaluate(() => performance.timeOrigin)).toBe(documentId);
   await page
     .getByRole("button", { name: "Cookie settings", exact: true })
     .click();
@@ -85,7 +88,26 @@ test("nothing loads before consent; choices isolate services and withdrawal unlo
   ).toBe(false);
 });
 
-test("consented guest, recovery, invitation, and app documents never load trackers", async ({
+test("app pages offer consent and keep essential-only tracking disabled", async ({
+  page,
+}) => {
+  const requests = await installTrackingStubs(page);
+  await page.goto("/en/sign-in");
+  const notice = page.getByRole("region", { name: "Your privacy choices" });
+  await expect(notice).toBeVisible();
+  await notice
+    .getByRole("button", { name: "Essential only", exact: true })
+    .click();
+  await expect(notice).toHaveCount(0);
+  await page.goto("/fi/guest");
+  await expect(
+    page.getByRole("region", { name: "Yksityisyysvalintasi" }),
+  ).toHaveCount(0);
+  expect(requests.googleRequests).toEqual([]);
+  expect(requests.vercelRequests).toEqual([]);
+});
+
+test("consented pages load all three trackers across both languages and route groups", async ({
   page,
   context,
 }) => {
@@ -98,6 +120,9 @@ test("consented guest, recovery, invitation, and app documents never load tracke
     },
   ]);
   for (const path of [
+    "/en",
+    "/fi/premium",
+    "/en/privacy",
     "/fi/guest#private-secret",
     "/en/password-reset/private-secret",
     "/fi/invitations/private-secret",
@@ -105,30 +130,42 @@ test("consented guest, recovery, invitation, and app documents never load tracke
     "/fi/browse",
     "/en/account/checkout",
   ]) {
+    const googleCount = requests.googleRequests.length;
+    const vercelCount = requests.vercelRequests.length;
     await page.goto(path);
     await expect(page.locator("#main-content")).toBeVisible();
-    expect(await page.locator("#google-tag-manager-init").count(), path).toBe(
-      0,
-    );
+    await expect(page.locator("#google-tag-manager-init"), path).toHaveCount(1);
+    await expect
+      .poll(() => requests.googleRequests.length, { message: path })
+      .toBe(googleCount + 1);
+    await expect
+      .poll(() => requests.vercelRequests.length, { message: path })
+      .toBe(vercelCount + 2);
   }
-  expect(requests.googleRequests).toEqual([]);
-  expect(requests.vercelRequests).toEqual([]);
 });
 
-test("unknown nested URLs keep localized app error pages without tracking", async ({
+test("unknown nested URLs retain localized error pages and consented tracking", async ({
   page,
+  context,
 }) => {
+  await context.addCookies([
+    {
+      name: "wishlist-privacy",
+      value: "v1.a1.m1",
+      url: "http://127.0.0.1:3017",
+    },
+  ]);
   const requests = await installTrackingStubs(page);
   const response = await page.goto("/fi/no-such-page/nested");
   expect(response?.status()).toBe(404);
   await expect(
     page.getByRole("heading", { name: "Sivua ei löytynyt" }),
   ).toBeVisible();
-  expect(requests.googleRequests).toEqual([]);
-  expect(requests.vercelRequests).toEqual([]);
+  await expect.poll(() => requests.googleRequests.length).toBe(1);
+  await expect.poll(() => requests.vercelRequests.length).toBe(2);
 });
 
-test("server-action redirects also unload the marketing document", async ({
+test("consented tracking survives sign-in, information-page navigation, and sign-out", async ({
   page,
   context,
 }) => {
@@ -148,6 +185,8 @@ test("server-action redirects also unload the marketing document", async ({
     .fill(accounts.owner.password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/en\/lists$/);
+  await expect.poll(() => requests.googleRequests.length).toBe(1);
+  await expect.poll(() => requests.vercelRequests.length).toBe(2);
   await page
     .getByRole("contentinfo")
     .getByRole("link", { name: "Free and Premium", exact: true })
@@ -160,7 +199,7 @@ test("server-action redirects also unload the marketing document", async ({
       () =>
         (window as Window & { __googleTagLoaded?: boolean }).__googleTagLoaded,
     ),
-  ).toBeUndefined();
+  ).toBe(true);
 });
 
 test("browser privacy signals override saved consent", async ({

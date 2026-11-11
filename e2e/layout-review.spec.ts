@@ -42,7 +42,7 @@ async function expectAligned(first: Locator, second: Locator) {
 }
 
 for (const locale of ["en", "fi"]) {
-  test(`${locale}: sharing, plan and profile panels align and adapt to enlarged text`, async ({
+  test(`${locale}: audience, plan and profile panels align and adapt to enlarged text`, async ({
     page,
   }, info) => {
     await page.goto("/en/sign-in");
@@ -76,7 +76,7 @@ for (const locale of ["en", "fi"]) {
       {
         name: "sharing",
         path: `/lists/${listId}/sharing`,
-        selector: '[class*="methods"]',
+        selector: 'fieldset[class*="audience"]',
       },
       {
         name: "plan",
@@ -97,28 +97,19 @@ for (const locale of ["en", "fi"]) {
         await page.goto(`/${locale}${route.path}`);
         await expect(page.locator("[data-loading-preview]")).not.toBeVisible();
         await page.evaluate(() => document.fonts.ready);
-        const panels = page.locator(route.selector);
-        const first = panels.locator(":scope > :first-child");
-        const second = panels.locator(":scope > :nth-child(2)");
+        const panels = page.locator(route.selector).filter({ visible: true });
+        const first = panels
+          .locator(
+            route.name === "sharing"
+              ? ":scope > label"
+              : ":scope > :first-child",
+          )
+          .first();
+        const second =
+          route.name === "sharing"
+            ? panels.locator(":scope > label").nth(1)
+            : panels.locator(":scope > :nth-child(2)");
         await expectAligned(first, second);
-        if (route.name === "sharing") {
-          const invitationAction = await first
-            .getByRole("button")
-            .last()
-            .boundingBox();
-          const guestAction = await second
-            .getByRole("link")
-            .last()
-            .boundingBox();
-          expect(
-            Math.abs(
-              invitationAction!.y +
-                invitationAction!.height -
-                guestAction!.y -
-                guestAction!.height,
-            ),
-          ).toBeLessThanOrEqual(1);
-        }
         if (route.name === "profile") {
           const profile = await first.boundingBox();
           const avatar = await second

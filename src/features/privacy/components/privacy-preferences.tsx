@@ -14,7 +14,7 @@ import {
 } from "react";
 import GoogleTagManager from "@/components/google-tag-manager";
 import shell from "@/components/shell.module.css";
-import { Link, usePathname } from "@/i18n/navigation";
+import { Link } from "@/i18n/navigation";
 import { useText } from "@/i18n/use-text";
 import {
   googleConsent,
@@ -24,7 +24,7 @@ import {
   readPrivacyPreferences,
   serializePrivacyPreferences,
 } from "../preferences";
-import { isMarketingPath, sanitizeMarketingEvent } from "../routes";
+import { sanitizeTrackingEvent } from "../routes";
 import styles from "./privacy.module.css";
 
 const PrivacyContext = createContext<{
@@ -64,16 +64,13 @@ const clearTrackingCookies = (preferences: Preferences) => {
 export function PrivacyPreferences({
   children,
   enabled,
-  marketing,
   preferences,
 }: {
   children: React.ReactNode;
   enabled: boolean;
-  marketing: boolean;
   preferences: Preferences | null;
 }) {
   const t = useText();
-  const pathname = usePathname();
   const dialog = useRef<HTMLDialogElement>(null);
   const opener = useRef<HTMLButtonElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -88,7 +85,6 @@ export function PrivacyPreferences({
     () => !browserBlocksTracking(),
     () => false,
   );
-  const eligible = enabled && marketing && isMarketingPath(pathname);
   const open = useCallback((trigger: HTMLButtonElement) => {
     opener.current = trigger;
     dialog.current?.showModal();
@@ -134,7 +130,7 @@ export function PrivacyPreferences({
 
   return (
     <PrivacyContext
-      value={{ enabled, showNotice: eligible && !preferences, open, save }}
+      value={{ enabled, showNotice: enabled && !preferences, open, save }}
     >
       {children}
       {enabled && (
@@ -206,13 +202,13 @@ export function PrivacyPreferences({
           </form>
         </dialog>
       )}
-      {eligible && trackingAllowed && preferences?.marketing && (
+      {enabled && trackingAllowed && preferences?.marketing && (
         <GoogleTagManager analytics={preferences.analytics} />
       )}
-      {eligible && trackingAllowed && preferences?.analytics && (
+      {enabled && trackingAllowed && preferences?.analytics && (
         <>
-          <Analytics beforeSend={sanitizeMarketingEvent} />
-          <SpeedInsights beforeSend={sanitizeMarketingEvent} />
+          <Analytics beforeSend={sanitizeTrackingEvent} />
+          <SpeedInsights beforeSend={sanitizeTrackingEvent} />
         </>
       )}
     </PrivacyContext>
@@ -244,7 +240,7 @@ export function PrivacyNotice() {
         <h2 id={headingId}>{t("Your privacy choices")}</h2>
         <p>
           {t(
-            "May we use optional analytics and Google advertising cookies on our public information pages? You can change your choice in Cookie settings.",
+            "May we use optional analytics and Google advertising cookies throughout our site? You can change your choice in Cookie settings.",
           )}{" "}
           <Link href="/privacy">{t("Privacy")}</Link>
         </p>

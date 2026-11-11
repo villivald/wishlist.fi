@@ -6,10 +6,7 @@ import {
   readPrivacyPreferences,
   serializePrivacyPreferences,
 } from "@/features/privacy/preferences";
-import {
-  isMarketingPath,
-  sanitizeMarketingEvent,
-} from "@/features/privacy/routes";
+import { sanitizeTrackingEvent } from "@/features/privacy/routes";
 
 describe("optional tracking boundaries", () => {
   it("does not authorize Google storage with Vercel-only consent", () => {
@@ -39,16 +36,13 @@ describe("optional tracking boundaries", () => {
       }
   });
 
-  it("allows only static public information routes and removes URL details", () => {
+  it("retains every page while removing query strings and fragments", () => {
     for (const pathname of [
       "/",
       "/en",
       "/fi/premium",
       "/en/privacy",
       "/fi/about",
-    ])
-      expect(isMarketingPath(pathname)).toBe(true);
-    for (const pathname of [
       "/en/browse",
       "/fi/lists/private-id",
       "/guest",
@@ -57,21 +51,20 @@ describe("optional tracking boundaries", () => {
       "/en/password-reset/secret",
       "/fi/invitations/secret",
       "/en/unknown",
-      "//example.com",
-    ])
-      expect(isMarketingPath(pathname)).toBe(false);
-    expect(
-      sanitizeMarketingEvent({
+    ]) {
+      expect(
+        sanitizeTrackingEvent({
+          type: "pageview",
+          url: `https://wishlist.fi${pathname}?search=private#secret`,
+        }),
+      ).toEqual({
         type: "pageview",
-        url: "https://wishlist.fi/fi/premium?search=private#secret",
-      }),
-    ).toEqual({ type: "pageview", url: "https://wishlist.fi/fi/premium" });
-    for (const url of [
-      "invalid",
-      "https://wishlist.fi/en/account/checkout?checkout=secret",
-      "https://wishlist.fi/en/guest#secret",
-    ])
-      expect(sanitizeMarketingEvent({ url })).toBeNull();
+        url: `https://wishlist.fi${pathname}`,
+      });
+    }
+    for (const url of ["invalid", "javascript:alert(1)", "file:///private"]) {
+      expect(sanitizeTrackingEvent({ url })).toBeNull();
+    }
   });
 
   it("queues default and chosen consent before GTM starts or loads", () => {
