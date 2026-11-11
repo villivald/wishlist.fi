@@ -30,7 +30,9 @@ const invite = async (
   role = "MEMBER",
 ) => {
   await page.goto(sharingUrl);
-  await page.getByLabel("Invitation email").fill(email);
+  await page
+    .getByRole("textbox", { name: "Invitation email", exact: true })
+    .fill(email);
   await page.getByLabel("Invitation role").selectOption(role);
   await page
     .getByRole("button", { name: "Send invitation", exact: true })
@@ -369,7 +371,9 @@ test("Premium expiry rejects stale invitations and admin forms while existing me
     await expect(other.getByRole("main").getByRole("alert")).toContainText(
       "Active Premium",
     );
-    await page.getByLabel("Invitation email").fill("another@example.test");
+    await page
+      .getByRole("textbox", { name: "Invitation email", exact: true })
+      .fill("another@example.test");
     await page
       .getByRole("button", { name: "Send invitation", exact: true })
       .click();
@@ -386,7 +390,9 @@ test("Premium expiry rejects stale invitations and admin forms while existing me
       where: { wishlistId: "e2e-collaboration", userId: "e2e-member" },
       data: { role: "MEMBER" },
     });
-    await other.getByLabel("Invitation email").fill("spoof@example.test");
+    await other
+      .getByRole("textbox", { name: "Invitation email", exact: true })
+      .fill("spoof@example.test");
     await other
       .getByRole("button", { name: "Send invitation", exact: true })
       .click();
@@ -415,7 +421,7 @@ test("sharing and visibility controls support keyboard use at 320px in dark mode
   await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
   await page.goto(sharingUrl);
   await page
-    .getByLabel("Invitation email")
+    .getByRole("textbox", { name: "Invitation email", exact: true })
     .fill("long-recipient-address-for-layout@example.test");
   await page
     .getByRole("button", { name: "Send invitation", exact: true })

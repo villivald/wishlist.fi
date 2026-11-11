@@ -401,6 +401,83 @@ describe("profile and account deletion", () => {
     expect(await readWish(list.id, `${list.id}-wish`, null)).toBeNull();
   });
 
+  it.each([true, false])(
+    "skips unverified successor admins when a verified alternative exists: %s",
+    async (verifiedAlternative) => {
+      const account = await login();
+      await prisma.user.create({
+        data: {
+          id: "e2e-unverified-admin",
+          username: "unverified-admin",
+          email: "unverified-admin@example.test",
+          passwordHash: account.user.passwordHash,
+          emailVerified: false,
+        },
+      });
+      const list = await createList("e2e-delete-unverified-successor");
+      await prisma.membership.createMany({
+        data: [
+          {
+            userId: "e2e-unverified-admin",
+            wishlistId: list.id,
+            role: "ADMIN",
+            joinedAt: new Date("2024-01-01"),
+          },
+          ...(verifiedAlternative
+            ? [
+                {
+                  userId: "e2e-member",
+                  wishlistId: list.id,
+                  role: "ADMIN" as const,
+                  joinedAt: new Date("2025-01-01"),
+                },
+              ]
+            : []),
+        ],
+      });
+      const impact = await readDeletionImpact(account.user.id);
+      expect(impact.lists.find(({ id }) => id === list.id)?.successor).toBe(
+        verifiedAlternative ? "e2e-member" : null,
+      );
+      await deleteAccount(account.user.id, account.session.id, {
+        password: accounts.owner.password,
+        confirmation: "DELETE",
+        impactToken: impact.impactToken,
+      });
+      expect(
+        await prisma.wishlist.findUnique({ where: { id: list.id } }),
+      ).toMatchObject({
+        ownerId: verifiedAlternative ? "e2e-member" : null,
+        archivedAt: verifiedAlternative ? null : expect.any(Date),
+      });
+    },
+  );
+
+  it("requires a fresh deletion summary when the successor is no longer verified", async () => {
+    const account = await login();
+    const list = await createList("e2e-delete-successor-verification");
+    await prisma.membership.create({
+      data: { userId: "e2e-member", wishlistId: list.id, role: "ADMIN" },
+    });
+    const input = await deletionInput();
+    await prisma.user.update({
+      where: { id: "e2e-member" },
+      data: { emailVerified: false },
+    });
+    await expect(
+      deleteAccount(account.user.id, account.session.id, input),
+    ).rejects.toThrow("review the updated summary");
+    expect(
+      await prisma.wishlist.findUnique({ where: { id: list.id } }),
+    ).toMatchObject({
+      ownerId: account.user.id,
+      archivedAt: null,
+    });
+    expect((await validateSession(account.token)).user?.id).toBe(
+      account.user.id,
+    );
+  });
+
   it("cancels the deleted user's reservations and retains authored wishes on other people's lists", async () => {
     const account = await login();
     const list = await createList("e2e-delete-member-list", "e2e-member");

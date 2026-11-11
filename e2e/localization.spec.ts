@@ -430,6 +430,11 @@ test("Finnish billing explains the provider language and returns checkout to Fin
   );
   await signIn(page);
   await page.goto("/fi/account/plan");
+  await page.getByLabel("Etukoodi", { exact: true }).fill("invalid");
+  await page.getByRole("button", { name: "Käytä koodi", exact: true }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
+    "Etukoodi ei ole käytettävissä. Tarkista koodi tai ota yhteyttä sen antajaan.",
+  );
   await page
     .getByRole("checkbox", { name: /kuukausittaisen uusiutumisen/ })
     .check();

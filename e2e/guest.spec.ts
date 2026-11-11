@@ -24,7 +24,9 @@ const signIn = async (page: Page, account = accounts.owner) => {
 
 const createLink = async (page: Page, label = "Family guests") => {
   await page.goto(managementUrl);
-  await page.getByLabel("Link label", { exact: true }).fill(label);
+  await page
+    .getByRole("textbox", { name: "Link label", exact: true })
+    .fill(label);
   const submit = page.getByRole("button", {
     name: "Create guest link",
     exact: true,

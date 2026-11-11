@@ -162,7 +162,7 @@ test("showing a private list preserves its audience and controls fit both langua
         document.documentElement.classList.toggle("dark", dark);
         document.documentElement.style.fontSize = "";
       }, dark);
-      const panel = page.locator("#list-visibility");
+      const panel = page.getByRole("main").locator("#list-visibility");
       await expect(panel).toBeVisible();
       expect((await panel.boundingBox())?.height).toBeLessThanOrEqual(180);
       await panel.screenshot({

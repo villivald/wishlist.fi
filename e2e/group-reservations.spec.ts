@@ -16,7 +16,10 @@ const signIn = async (page: Page, account = accounts.owner) => {
 };
 const start = async (page: Page) => {
   await page.goto(wishPath);
-  await page.getByText("Reserve with others", { exact: true }).click();
+  await page
+    .getByRole("main")
+    .getByText("Reserve with others", { exact: true })
+    .click();
   await expect(
     page.getByRole("button", { name: "Start group reservation", exact: true }),
   ).toBeDisabled();
@@ -442,6 +445,7 @@ test("reservation actions align and group disclosure stays compact", async ({
   await signIn(page);
   await page.goto(wishPath);
   const disclosure = page
+    .getByRole("main")
     .locator("details")
     .filter({ hasText: "Reserve with others" });
   const summary = disclosure.locator("summary");

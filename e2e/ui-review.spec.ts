@@ -164,10 +164,14 @@ for (const locale of ["en", "fi"] as const) {
     });
     await expect(priority).toHaveText(new RegExp(fi ? "Tärkeys" : "Priority"));
     await expect(
-      page.getByText(fi ? "Varattu" : "Reserved", { exact: true }),
+      page
+        .getByRole("main")
+        .getByText(fi ? "Varattu" : "Reserved", { exact: true }),
     ).toBeVisible();
     await expect(
-      page.getByText(fi ? "Piilotettu" : "Hidden", { exact: true }),
+      page
+        .getByRole("main")
+        .getByText(fi ? "Piilotettu" : "Hidden", { exact: true }),
     ).toBeVisible();
     await expect(
       page.getByRole("link", {

@@ -30,6 +30,33 @@ export const runtimeStrings = (source: ts.Node) => {
 // application errors. Keep those catalog entries even without a browser import.
 export const runtimeFeedbackStrings = (source: ts.SourceFile) => {
   const values = new Set<string>();
+  const constants = new Map(
+    source.statements.flatMap((statement) =>
+      ts.isVariableStatement(statement) &&
+      (statement.declarationList.flags & ts.NodeFlags.Const) !== 0
+        ? statement.declarationList.declarations.flatMap((declaration) =>
+            ts.isIdentifier(declaration.name) && declaration.initializer
+              ? [[declaration.name.text, declaration.initializer] as const]
+              : [],
+          )
+        : [],
+    ),
+  );
+  const collect = (node: ts.Node, seen = new Set<string>()) => {
+    runtimeStrings(node).forEach((value) => values.add(value));
+    const reference = (child: ts.Node) => {
+      if (ts.isIdentifier(child) && !seen.has(child.text)) {
+        const initializer = constants.get(child.text);
+        if (initializer) {
+          seen.add(child.text);
+          collect(initializer, seen);
+        }
+      } else {
+        ts.forEachChild(child, reference);
+      }
+    };
+    reference(node);
+  };
   const visit = (node: ts.Node) => {
     const argument =
       ts.isCallExpression(node) && ts.isIdentifier(node.expression)
@@ -43,8 +70,7 @@ export const runtimeFeedbackStrings = (source: ts.SourceFile) => {
             /Error$/.test(node.expression.text)
           ? node.arguments?.[0]
           : undefined;
-    if (argument)
-      runtimeStrings(argument).forEach((value) => values.add(value));
+    if (argument) collect(argument);
     ts.forEachChild(node, visit);
   };
   visit(source);

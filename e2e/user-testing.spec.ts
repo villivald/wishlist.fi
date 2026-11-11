@@ -113,11 +113,12 @@ test("reserver sees their marked wish and reserved-only filtering updates immedi
 }) => {
   await signIn(page);
   await page.goto(`/en/lists/${listId}`);
-  await expect(page.getByText("@e2e-owner", { exact: true })).toBeVisible();
+  const main = page.getByRole("main");
+  await expect(main.getByText("@e2e-owner", { exact: true })).toBeVisible();
   await expect(
-    page.getByText("Reserved by you", { exact: true }),
+    main.getByText("Reserved by you", { exact: true }),
   ).toBeVisible();
-  await expect(page.locator('[data-reserved="true"]')).toHaveCount(1);
+  await expect(main.locator('[data-reserved="true"]')).toHaveCount(1);
   await page.getByRole("switch", { name: "Only reserved wishes" }).check();
   await expect(
     page.getByRole("heading", { name: "Available book" }),

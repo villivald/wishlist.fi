@@ -75,7 +75,11 @@ const deletionImpact = async (tx: Prisma.TransactionClient, userId: string) => {
       id: true,
       title: true,
       memberships: {
-        where: { userId: { not: userId }, role: "ADMIN" },
+        where: {
+          userId: { not: userId },
+          role: "ADMIN",
+          user: { emailVerified: true },
+        },
         orderBy: [{ joinedAt: "asc" }, { id: "asc" }],
         take: 1,
         select: { userId: true, user: { select: { username: true } } },

@@ -50,10 +50,31 @@ describe("English and Finnish catalogs", () => {
       "Waiting",
     ]);
   });
+  it("retains feedback stored in module constants and follows aliases without looping", () => {
+    const source = ts.createSourceFile(
+      "constant-feedback.ts",
+      `const unavailable = "Unavailable feedback";
+       const alias = unavailable;
+       const other = "Unrelated server copy";
+       const cycleA = cycleB;
+       const cycleB = cycleA;
+       throw new PremiumError(alias);
+       toActionState("ERROR", unavailable);
+       reply(cycleA, 400);`,
+      ts.ScriptTarget.Latest,
+      true,
+    );
+    expect([...runtimeFeedbackStrings(source)]).toEqual([
+      "Unavailable feedback",
+    ]);
+  });
   it("keeps server feedback localized in the reduced client catalog", () => {
     const enClient = createTranslator("en", clientCatalog("en"));
     const fiClient = createTranslator("fi", clientCatalog("fi"));
     for (const key of [
+      "This promo code is unavailable. Check the code or contact the person who gave it to you.",
+      "This reservation is unavailable or you do not have permission to change it.",
+      "This invitation is unavailable. Sign in with the invited email or ask the list admin for a new invitation.",
       "Billing details are up to date.",
       "Paddle is temporarily unavailable. Your last confirmed billing details are shown. Try refreshing billing shortly.",
       "Image saved.",
