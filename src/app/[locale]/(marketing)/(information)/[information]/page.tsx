@@ -189,6 +189,11 @@ const information = (
         <h2>{t("Cookies and preferences")}</h2>
         <p>
           {t(
+            "If you choose Continue with Google, Google authenticates you and shares your account identifier and email with Wishlist. We store the linked identifier and email, not your Google password or Google access tokens. A short-lived security cookie protects the sign-in process. Email and password remain available as an alternative.",
+          )}
+        </p>
+        <p>
+          {t(
             "Signup, password recovery, and verification-email requests use Cloudflare Turnstile to help prevent automated abuse. Cloudflare processes browser and device signals for this security check.",
           )}
         </p>

@@ -170,6 +170,7 @@ describe("profile and account deletion", () => {
       passwordHash: "spoof",
     });
     expect(await readProfile(account.user.id)).toEqual({
+      username: "e2e-owner",
       showPremiumBadge: false,
       name: "Ada Lovelace",
       description: "Books & gardens",
@@ -182,6 +183,7 @@ describe("profile and account deletion", () => {
       passwordHash: account.user.passwordHash,
     });
     expect(await readProfile("e2e-member")).toEqual({
+      username: "e2e-member",
       showPremiumBadge: false,
       name: null,
       description: null,
@@ -191,6 +193,7 @@ describe("profile and account deletion", () => {
       description: "",
     });
     expect(await readProfile(account.user.id)).toEqual({
+      username: "e2e-owner",
       showPremiumBadge: false,
       name: null,
       description: null,
@@ -198,6 +201,45 @@ describe("profile and account deletion", () => {
     await expect(
       updateProfile(account.user.id, account.session.id, {
         name: "x".repeat(81),
+        description: "",
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("renames the current account without changing its session or list access, and rejects duplicate usernames atomically", async () => {
+    const account = await login();
+    const list = await createList("e2e-rename-list");
+    await updateProfile(account.user.id, account.session.id, {
+      username: "  maxim-villivald  ",
+      name: "",
+      description: "Still mine",
+    });
+    expect((await validateSession(account.token)).user).toMatchObject({
+      id: account.user.id,
+      username: "maxim-villivald",
+      email: accounts.owner.email,
+    });
+    expect(await readWishlist(list.id, account.user.id)).toMatchObject({
+      ownerId: account.user.id,
+    });
+    await expect(
+      updateProfile(account.user.id, account.session.id, {
+        username: "e2e-member",
+        name: "Must roll back",
+        description: "Must roll back",
+      }),
+    ).rejects.toMatchObject({
+      issues: [expect.objectContaining({ path: ["username"] })],
+    });
+    expect(await readProfile(account.user.id)).toMatchObject({
+      username: "maxim-villivald",
+      name: null,
+      description: "Still mine",
+    });
+    await expect(
+      updateProfile(account.user.id, account.session.id, {
+        username: "contains.dot",
+        name: "",
         description: "",
       }),
     ).rejects.toThrow();

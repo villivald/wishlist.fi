@@ -14,8 +14,10 @@ export function AccountPanel({
 }) {
   return (
     <section className={styles["account-panel"]}>
-      <h1>{title}</h1>
-      <p className={styles.muted}>{description}</p>
+      <header className={styles["account-heading"]}>
+        <h1>{title}</h1>
+        <p className={styles.muted}>{description}</p>
+      </header>
       {children}
       {footer && <div className={styles["form-footer"]}>{footer}</div>}
     </section>

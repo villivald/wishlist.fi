@@ -1,3 +1,5 @@
+import { ZodError } from "zod";
+import { GOOGLE_REAUTH_MS } from "@/features/auth/service/google";
 import {
   AuthError,
   consumeRateLimit,
@@ -8,7 +10,7 @@ import { syncBillingAccount } from "@/features/billing/service/sync";
 import { verifyPasswordHash } from "@/features/password/utils/hash-and-verify";
 import { requirePremium } from "@/features/premium/service/entitlements";
 import { lockWishlist } from "@/features/wishlist/service/lock";
-import type { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { hashToken } from "@/utils/crypto";
 import { deleteAccountSchema, profileSchema } from "./schemas";
@@ -24,7 +26,15 @@ const currentAccount = async (
       emailVerified: true,
       sessions: { some: { id: sessionId, expiresAt: { gt: new Date() } } },
     },
-    select: { id: true, email: true, passwordHash: true },
+    select: {
+      id: true,
+      email: true,
+      passwordHash: true,
+      sessions: {
+        where: { id: sessionId },
+        select: { googleReauthenticatedAt: true },
+      },
+    },
   });
 
   if (!user) {
@@ -36,7 +46,12 @@ const currentAccount = async (
 export const readProfile = (userId: string) =>
   prisma.user.findUniqueOrThrow({
     where: { id: userId },
-    select: { name: true, description: true, showPremiumBadge: true },
+    select: {
+      username: true,
+      name: true,
+      description: true,
+      showPremiumBadge: true,
+    },
   });
 
 export const updateProfile = async (
@@ -47,24 +62,40 @@ export const updateProfile = async (
   const data = profileSchema.parse(input);
   await consumeRateLimit("profile-change", userId, 30, 60 * 60 * 1000);
 
-  await prisma.$transaction(async (tx) => {
-    await lockUser(tx, userId);
-    await currentAccount(tx, userId, sessionId);
-    const current = await tx.user.findUniqueOrThrow({
-      where: { id: userId },
-      select: { showPremiumBadge: true },
+  try {
+    await prisma.$transaction(async (tx) => {
+      await lockUser(tx, userId);
+      await currentAccount(tx, userId, sessionId);
+      const current = await tx.user.findUniqueOrThrow({
+        where: { id: userId },
+        select: { showPremiumBadge: true },
+      });
+      if (data.showPremiumBadge && !current.showPremiumBadge)
+        await requirePremium(userId, tx);
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          username: data.username,
+          name: data.name || null,
+          description: data.description || null,
+          showPremiumBadge: data.showPremiumBadge,
+        },
+      });
     });
-    if (data.showPremiumBadge && !current.showPremiumBadge)
-      await requirePremium(userId, tx);
-    await tx.user.update({
-      where: { id: userId },
-      data: {
-        name: data.name || null,
-        description: data.description || null,
-        showPremiumBadge: data.showPremiumBadge,
-      },
-    });
-  });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    )
+      throw new ZodError([
+        {
+          code: "custom",
+          path: ["username"],
+          message: "This username is taken. Choose another.",
+        },
+      ]);
+    throw error;
+  }
 };
 
 const deletionImpact = async (tx: Prisma.TransactionClient, userId: string) => {
@@ -186,9 +217,24 @@ export const deleteAccount = async (
   await consumeRateLimit("account-delete", userId, 5, 15 * 60 * 1000);
   const user = await currentAccount(prisma, userId, sessionId);
 
-  if (!(await verifyPasswordHash(user.passwordHash, data.password))) {
+  if (
+    user.passwordHash &&
+    !(await verifyPasswordHash(user.passwordHash, data.password ?? ""))
+  ) {
     throw new AuthError("Incorrect current password");
   }
+  const checkGoogleConfirmation = (account: typeof user) => {
+    if (
+      !account.passwordHash &&
+      (!account.sessions[0]?.googleReauthenticatedAt ||
+        account.sessions[0].googleReauthenticatedAt.getTime() <
+          Date.now() - GOOGLE_REAUTH_MS)
+    )
+      throw new AuthError(
+        "Confirm with Google again before deleting your account.",
+      );
+  };
+  checkGoogleConfirmation(user);
 
   const billingIds = await prisma.$transaction(
     async (tx) => {
@@ -201,6 +247,7 @@ export const deleteAccount = async (
       if (current.passwordHash !== user.passwordHash) {
         throw new AuthError("Your password changed. Please sign in again.");
       }
+      checkGoogleConfirmation(current);
 
       // Lock every parent affected by cascades, in one consistent order.
       const affected = await tx.wishlist.findMany({

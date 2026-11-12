@@ -5,17 +5,15 @@ import { AccountDetails } from "@/features/account/components/account-details";
 import { AccountLayout } from "@/features/account/components/account-layout";
 import { ProfileForm } from "@/features/account/components/profile-form";
 import { readProfile } from "@/features/account/service/account";
+import { AccountSecurity } from "@/features/auth/components/account-security";
 import { getAuthOrRedirect } from "@/features/auth/queries/get-auth-or-redirect";
+import { suggestUsername } from "@/features/auth/utils/username";
 import { ImageEditor } from "@/features/media/components/image-editor";
 import { readAvatar } from "@/features/media/service/media";
 import { readPremiumAccess } from "@/features/premium/service/entitlements";
 import { Link } from "@/i18n/navigation";
 import { getText } from "@/i18n/server";
-import {
-  accountDeletePath,
-  accountPasswordPath,
-  accountPlanPath,
-} from "@/paths";
+import { accountPlanPath } from "@/paths";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getText();
@@ -25,15 +23,20 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function AccountPage() {
+export default async function AccountPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ google?: string }>;
+}) {
   const t = await getText();
 
   const { user } = await getAuthOrRedirect();
 
-  const [image, profile, access] = await Promise.all([
+  const [image, profile, access, { google }] = await Promise.all([
     readAvatar(user.id),
     readProfile(user.id),
     readPremiumAccess(user.id),
+    searchParams,
   ]);
 
   return (
@@ -41,7 +44,11 @@ export default async function AccountPage() {
       <AccountLayout
         identity={<AccountDetails user={user} />}
         profile={
-          <ProfileForm profile={profile} premium={access.plan === "PREMIUM"} />
+          <ProfileForm
+            profile={profile}
+            usernameSuggestion={suggestUsername(user.email)}
+            premium={access.plan === "PREMIUM"}
+          />
         }
         plan={
           <section
@@ -82,12 +89,7 @@ export default async function AccountPage() {
             label={t("Your avatar")}
           />
         }
-        security={
-          <div className={styles.actions}>
-            <Link href={accountPasswordPath}>{t("Change password")}</Link>
-            <Link href={accountDeletePath}>{t("Delete account")}</Link>
-          </div>
-        }
+        security={<AccountSecurity userId={user.id} google={google} />}
       />
     </section>
   );

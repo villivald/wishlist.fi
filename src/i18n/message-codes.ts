@@ -2,6 +2,15 @@ import type { TextKey } from "./text";
 
 // Codes remain stable when presentation copy changes.
 export const messageCodes = {
+  "message.username_taken": "This username is taken. Choose another.",
+  "message.username_length":
+    "Use 2–40 letters, numbers, underscores, or hyphens.",
+  "message.google_delete_confirmation":
+    "Confirm with Google again before deleting your account.",
+  "message.password_setup_sent":
+    "If a new link can be sent, it will arrive at your account email. Use the latest link to set a password.",
+  "message.delete_confirmation":
+    "Confirm your identity, type DELETE, and refresh the deletion summary if needed.",
   "message.list_hidden_from_viewers": "List hidden from viewers.",
   "message.account_protection_is_temporarily_unavailable_please_try_again_shortly":
     "Account protection is temporarily unavailable. Please try again shortly.",

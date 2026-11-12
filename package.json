@@ -56,6 +56,7 @@
     "@vercel/speed-insights": "^2.0.0",
     "dotenv": "^18.0.4",
     "inngest": "^4.21.0",
+    "jose": "^6.2.17",
     "lucide-react": "^1.48.0",
     "next": "16.4.2",
     "next-intl": "^4.14.9",

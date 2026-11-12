@@ -106,6 +106,37 @@ test("profile details validate, preserve invalid input, save, clear, and stay un
   await expect(page.getByLabel("About you")).toHaveValue("");
 });
 
+test("username changes are explicit, validate duplicates, and preserve email sign-in", async ({
+  page,
+}) => {
+  await signIn(page);
+  await page.goto("/en/account/profile");
+  const username = page.getByLabel("Username", { exact: true });
+  await expect(username).toHaveValue("e2e-owner");
+  await username.fill("e2e-member");
+  await page.getByRole("button", { name: "Save profile" }).click();
+  await expect(
+    page.getByText("This username is taken. Choose another."),
+  ).toBeVisible();
+  await expect(username).toHaveValue("e2e-member");
+  await expect(username).toHaveAttribute("aria-invalid", "true");
+  await page.getByRole("button", { name: /Use email suggestion/ }).click();
+  await expect(username).toBeFocused();
+  await expect(username).toHaveValue("owner");
+  await page.reload();
+  await expect(username).toHaveValue("e2e-owner");
+  await username.fill("readable-owner");
+  await page.getByRole("button", { name: "Save profile" }).click();
+  await expect(page.getByRole("status")).toHaveText("Profile saved.");
+  await expect(
+    page.locator("dd").getByText("readable-owner", { exact: true }),
+  ).toBeVisible();
+  await page.context().clearCookies();
+  await signIn(page);
+  await page.goto("/en/account/profile");
+  await expect(username).toHaveValue("readable-owner");
+});
+
 test("register, create a visible list, reserve, cancel, fulfill and delete without a successor", async ({
   page,
   browser,

@@ -1,0 +1,14 @@
+.suggestion {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  max-width: 100%;
+  padding-inline: 0;
+  font-size: 0.8rem;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+
+.suggestion span {
+  min-width: 0;
+}

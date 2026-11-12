@@ -7,6 +7,7 @@ import {
 } from "@/features/account/components/account-details";
 import { AccountLayout } from "@/features/account/components/account-layout";
 import { ProfileForm } from "@/features/account/components/profile-form";
+import { suggestUsername } from "@/features/auth/utils/username";
 import { BrowseControls } from "@/features/discovery/components/discovery-controls";
 import { parseDiscoveryQuery } from "@/features/discovery/service/query";
 import { MyListsControls } from "@/features/wishlist/components/my-lists-controls";
@@ -148,9 +149,11 @@ export function DetailSkeleton({ kind = "list" }: { kind?: "list" | "wish" }) {
 export function EditorSkeleton({
   profile = false,
   user,
+  security,
 }: {
   profile?: boolean;
   user?: AccountIdentity;
+  security?: ReactNode;
 }) {
   const t = useText();
 
@@ -163,7 +166,15 @@ export function EditorSkeleton({
         <AccountLayout
           identity={user && <AccountDetails user={user} />}
           profile={
-            <ProfileForm profile={{ name: null, description: null }} loading />
+            <ProfileForm
+              profile={{
+                username: user?.username ?? "",
+                name: null,
+                description: null,
+              }}
+              usernameSuggestion={suggestUsername(user?.email ?? "")}
+              loading
+            />
           }
           plan={
             <div className={shell["plan-summary"]}>
@@ -180,7 +191,9 @@ export function EditorSkeleton({
               <SkeletonFields />
             </div>
           }
-          security={<div className={`${styles.block} ${styles.button}`} />}
+          security={
+            security ?? <div className={`${styles.block} ${styles.button}`} />
+          }
         />
       </LoadingFrame>
     );

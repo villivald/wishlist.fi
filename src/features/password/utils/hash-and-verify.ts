@@ -10,8 +10,12 @@ export const hashPassword = async (password: string) => {
 };
 
 export const verifyPasswordHash = async (
-  passwordHash: string,
+  passwordHash: string | null,
   password: string,
 ) => {
+  if (!passwordHash) {
+    await hashPassword(password);
+    return false;
+  }
   return await verify(passwordHash, password);
 };

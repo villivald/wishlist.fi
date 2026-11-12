@@ -43,6 +43,7 @@ export const resetFixtures = async () => {
                 OR: [
                   { email: newAccount.email },
                   { username: newAccount.username },
+                  { email: { startsWith: "e2e-google-" } },
                 ],
               },
             },
@@ -59,6 +60,7 @@ export const resetFixtures = async () => {
             { id: { startsWith: "e2e-" } },
             { email: newAccount.email },
             { username: newAccount.username },
+            { email: { startsWith: "e2e-google-" } },
           ],
         },
       });

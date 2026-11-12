@@ -17,7 +17,8 @@ model User {
   email                   String                   @unique @db.VarChar(254)
   emailVerified           Boolean                  @default(false)
   locale                  String                   @default("en") @db.VarChar(2)
-  passwordHash            String
+  passwordHash            String?
+  identities              AuthIdentity[]
   image                   Media?
   sessions                Session[]
   passwordResetTokens     PasswordResetToken[]
@@ -70,12 +71,37 @@ model AccountEmail {
 }
 
 model Session {
-  id        String   @id
-  expiresAt DateTime
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                      String    @id
+  expiresAt               DateTime
+  userId                  String
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  googleReauthenticatedAt DateTime?
 
   @@index([userId])
+  @@index([expiresAt])
+}
+
+model AuthIdentity {
+  provider String @db.VarChar(20)
+  subject  String @db.VarChar(255)
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, subject])
+  @@unique([userId, provider])
+}
+
+// Short-lived, single-use authorization requests. Provider tokens are never retained.
+model GoogleAuthRequest {
+  stateHash    String   @id
+  codeVerifier String   @db.VarChar(128)
+  nonce        String   @db.VarChar(128)
+  locale       String   @db.VarChar(2)
+  returnTo     String   @db.VarChar(512)
+  intent       String   @db.VarChar(20)
+  sessionId    String?
+  expiresAt    DateTime
+
   @@index([expiresAt])
 }
 

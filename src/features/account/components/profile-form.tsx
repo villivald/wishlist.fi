@@ -7,17 +7,21 @@ import loadingStyles from "@/components/loading/loading-preview.module.css";
 import styles from "@/components/shell.module.css";
 import { useText } from "@/i18n/use-text";
 import { saveProfile } from "../actions/manage-account";
+import { UsernameField } from "./username-field";
 
 export function ProfileForm({
   profile,
+  usernameSuggestion,
   loading = false,
   premium = false,
 }: {
   profile: {
+    username: string;
     name: string | null;
     description: string | null;
     showPremiumBadge?: boolean;
   };
+  usernameSuggestion?: string;
   premium?: boolean;
   loading?: boolean;
 }) {
@@ -56,6 +60,15 @@ export function ProfileForm({
         <legend className={styles["visually-hidden"]}>
           {t("Profile details")}
         </legend>
+        <UsernameField
+          key={state.timestamp}
+          initialValue={String(
+            state.payload?.get("username") ?? profile.username,
+          )}
+          suggestion={usernameSuggestion}
+          errors={state.fieldErrors.username}
+          loading={loading}
+        />
         <div className={styles.field}>
           <label htmlFor="profile-name">{t("Display name")}</label>
           <input

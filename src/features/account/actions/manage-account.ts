@@ -44,7 +44,7 @@ export const removeAccount = async (_state: ActionState, data: FormData) => {
     if (error instanceof ZodError) {
       return toActionState(
         "ERROR",
-        "Enter your current password, type DELETE, and refresh the deletion summary if needed.",
+        "Confirm your identity, type DELETE, and refresh the deletion summary if needed.",
       );
     }
     return authActionError(error);

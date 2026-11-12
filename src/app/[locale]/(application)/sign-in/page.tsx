@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { AccountForm } from "@/components/account-form";
 import { AccountPanel } from "@/components/account-panel";
+import {
+  GoogleFeedback,
+  GoogleOption,
+} from "@/features/auth/components/google-option";
 import { authReturnPath, safeReturnTo } from "@/features/auth/utils/return-to";
 import { Link } from "@/i18n/navigation";
 import { getText } from "@/i18n/server";
@@ -20,11 +24,17 @@ export default async function SignInPage({
     reset?: string;
     deleted?: string;
     returnTo?: string;
+    google?: string;
   }>;
 }) {
   const t = await getText();
 
-  const { reset, deleted, returnTo: requestedReturnTo } = await searchParams;
+  const {
+    reset,
+    deleted,
+    google,
+    returnTo: requestedReturnTo,
+  } = await searchParams;
   const returnTo = safeReturnTo(requestedReturnTo);
   return (
     <AccountPanel
@@ -45,6 +55,8 @@ export default async function SignInPage({
         </>
       }
     >
+      <GoogleFeedback status={google} />
+      <GoogleOption returnTo={returnTo} separate />
       <AccountForm mode="signIn" returnTo={returnTo} />
     </AccountPanel>
   );

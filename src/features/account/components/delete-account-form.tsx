@@ -6,7 +6,13 @@ import styles from "@/components/shell.module.css";
 import { useText } from "@/i18n/use-text";
 import { removeAccount } from "../actions/manage-account";
 
-export function DeleteAccountForm({ impactToken }: { impactToken: string }) {
+export function DeleteAccountForm({
+  impactToken,
+  requiresPassword = true,
+}: {
+  impactToken: string;
+  requiresPassword?: boolean;
+}) {
   const t = useText();
 
   const [state, action, pending] = useActionState(removeAccount, {
@@ -22,18 +28,20 @@ export function DeleteAccountForm({ impactToken }: { impactToken: string }) {
         <legend className={styles["visually-hidden"]}>
           {t("Confirm account deletion")}
         </legend>
-        <div className={styles.field}>
-          <label htmlFor="delete-password">{t("Current password")}</label>
-          <input
-            key={state.timestamp}
-            id="delete-password"
-            type="password"
-            name="password"
-            autoComplete="current-password"
-            maxLength={128}
-            required
-          />
-        </div>
+        {requiresPassword && (
+          <div className={styles.field}>
+            <label htmlFor="delete-password">{t("Current password")}</label>
+            <input
+              key={state.timestamp}
+              id="delete-password"
+              type="password"
+              name="password"
+              autoComplete="current-password"
+              maxLength={128}
+              required
+            />
+          </div>
+        )}
         <div className={styles.field}>
           <label htmlFor="delete-confirmation">
             {t("Type DELETE to confirm")}

@@ -2,11 +2,20 @@ import type { Metadata } from "next";
 import styles from "@/components/shell.module.css";
 import { DeleteAccountForm } from "@/features/account/components/delete-account-form";
 import { readDeletionImpact } from "@/features/account/service/account";
+import {
+  GoogleFeedback,
+  GoogleOption,
+} from "@/features/auth/components/google-option";
 import { getAuthOrRedirect } from "@/features/auth/queries/get-auth-or-redirect";
+import {
+  hasRecentGoogleConfirmation,
+  readAccountSecurity,
+} from "@/features/auth/service/google";
 import { Link } from "@/i18n/navigation";
 import { getText } from "@/i18n/server";
 import {
   accountDeletePath,
+  accountPasswordPath,
   accountPlanPath,
   accountProfilePath,
 } from "@/paths";
@@ -19,11 +28,22 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function DeleteAccountPage() {
+export default async function DeleteAccountPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ google?: string }>;
+}) {
   const t = await getText();
 
-  const { user } = await getAuthOrRedirect();
-  const impact = await readDeletionImpact(user.id);
+  const { user, session } = await getAuthOrRedirect();
+  const [impact, security, { google }] = await Promise.all([
+    readDeletionImpact(user.id),
+    readAccountSecurity(user.id),
+    searchParams,
+  ]);
+  const confirmed = hasRecentGoogleConfirmation(
+    session.googleReauthenticatedAt,
+  );
 
   return (
     <section className={styles.editor}>
@@ -117,10 +137,25 @@ export default async function DeleteAccountPage() {
           "Group reservations pass to the earliest eligible participant who has joined. If nobody remains, the reservation ends. Your group memberships and pending invitations are removed.",
         )}
       </p>
-      <DeleteAccountForm
-        key={impact.impactToken}
-        impactToken={impact.impactToken}
-      />
+      <GoogleFeedback status={google} />
+      {!security.hasPassword && !confirmed && (
+        <div>
+          <p>
+            {t(
+              "Confirm with your connected Google account before deleting. Confirmation lasts five minutes.",
+            )}
+          </p>
+          <GoogleOption intent="delete" />
+          <Link href={accountPasswordPath}>{t("Set a password")}</Link>
+        </div>
+      )}
+      {(security.hasPassword || confirmed) && (
+        <DeleteAccountForm
+          key={impact.impactToken}
+          impactToken={impact.impactToken}
+          requiresPassword={security.hasPassword}
+        />
+      )}
       <div className={styles.actions}>
         <Link href={accountProfilePath}>{t("Keep my account")}</Link>
         <Link href={accountDeletePath}>{t("Refresh deletion summary")}</Link>

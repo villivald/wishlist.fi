@@ -11,6 +11,7 @@ export const authMaintenance = inngest.createFunction(
       prisma.session.deleteMany({ where: { expiresAt } }),
       prisma.emailVerificationToken.deleteMany({ where: { expiresAt } }),
       prisma.passwordResetToken.deleteMany({ where: { expiresAt } }),
+      prisma.googleAuthRequest.deleteMany({ where: { expiresAt } }),
     ]);
     return { cleaned: true };
   },

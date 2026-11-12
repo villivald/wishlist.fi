@@ -211,6 +211,19 @@
 
 .account-panel {
   max-width: 540px;
+  padding: clamp(16px, 4vw, 40px);
+}
+
+.account-heading {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.account-heading h1 {
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  line-height: 1.15;
+  text-wrap: balance;
 }
 
 .account-details {
@@ -1070,7 +1083,6 @@
     width: 100%;
   }
 
-  .account-panel,
   .editor {
     padding: 1.1rem;
   }

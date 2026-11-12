@@ -24,12 +24,14 @@ export const newPasswordSchema = z
     path: ["confirmPassword"],
   });
 
+export const usernameSchema = z
+  .string()
+  .trim()
+  .min(2, "Use 2–40 letters, numbers, underscores, or hyphens.")
+  .max(40, "Use 2–40 letters, numbers, underscores, or hyphens.")
+  .regex(/^[a-zA-Z0-9_-]+$/, "Use letters, numbers, underscores, or hyphens");
+
 export const signUpSchema = newPasswordSchema.safeExtend({
-  username: z
-    .string()
-    .trim()
-    .min(2)
-    .max(40)
-    .regex(/^[a-zA-Z0-9_-]+$/, "Use letters, numbers, underscores, or hyphens"),
+  username: usernameSchema,
   email: emailSchema,
 });
