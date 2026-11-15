@@ -2,12 +2,19 @@ import Image from "next/image";
 import { WishCard } from "@/components/cards/wish-card";
 import shell from "@/components/shell.module.css";
 import { Link } from "@/i18n/navigation";
+import type { TextKey } from "@/i18n/translator";
 import { useText } from "@/i18n/use-text";
 import { signUpPath } from "@/paths";
 import styles from "./home.module.css";
 import { homeExamples } from "./home-examples";
 
-export function HomeSections() {
+export function HomeSections({
+  createHref = signUpPath,
+  createLabel = "Start your own list",
+}: {
+  createHref?: string;
+  createLabel?: TextKey;
+}) {
   const t = useText();
   const steps = [
     {
@@ -90,8 +97,8 @@ export function HomeSections() {
         </ul>
         <div className={styles.invitation}>
           <p>{t("What would go on yours?")}</p>
-          <Link href={signUpPath} className={shell["secondary-button"]}>
-            {t("Start your own list")}
+          <Link href={createHref} className={shell["secondary-button"]}>
+            {t(createLabel)}
           </Link>
         </div>
       </section>

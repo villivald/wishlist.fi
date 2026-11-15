@@ -6,6 +6,7 @@ import { getAuthOrRedirect } from "@/features/auth/queries/get-auth-or-redirect"
 import { readFavoriteIds } from "@/features/favorites/service/favorites";
 import { MyListCard } from "@/features/wishlist/components/my-list-card";
 import { MyListsControls } from "@/features/wishlist/components/my-lists-controls";
+import { MyListsWelcome } from "@/features/wishlist/components/my-lists-welcome";
 import { readMyWishlists } from "@/features/wishlist/service/lists";
 import { Link } from "@/i18n/navigation";
 import { getText } from "@/i18n/server";
@@ -81,14 +82,14 @@ export default async function ListsPage({
             />
           ))}
         </ul>
+      ) : page === 1 ? (
+        <MyListsWelcome />
       ) : (
         <div className={styles["empty-state"]}>
           <List aria-hidden="true" />
-          <h2>{page === 1 ? t("No lists yet") : t("No more lists")}</h2>
+          <h2>{t("No more lists")}</h2>
           <p className={styles.muted}>
-            {page === 1
-              ? t("Create your first list and make it your own.")
-              : t("Return to an earlier page to find your lists.")}
+            {t("Return to an earlier page to find your lists.")}
           </p>
         </div>
       )}

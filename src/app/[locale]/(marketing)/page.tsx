@@ -4,22 +4,27 @@ import { homeHeroArtworks } from "@/components/home/home-hero-artworks";
 import { HomeSections } from "@/components/home/home-sections";
 import styles from "@/components/shell.module.css";
 import { getAuth } from "@/features/auth/actions/get-auth";
-import { getHomePath } from "@/features/auth/utils/home-path";
 import { Link } from "@/i18n/navigation";
 import { getText } from "@/i18n/server";
-import { redirect } from "@/i18n/server-navigation";
-import { browsePath, signUpPath } from "@/paths";
+import {
+  browsePath,
+  emailVerificationPath,
+  listsPath,
+  newListPath,
+  signUpPath,
+} from "@/paths";
 
 export default async function HomePage() {
   const t = await getText();
 
   const { user } = await getAuth();
 
-  if (user) {
-    return await redirect(getHomePath(user));
-  }
-
   const artwork = homeHeroArtworks[randomInt(homeHeroArtworks.length)];
+  const createAction = user
+    ? user.emailVerified
+      ? { href: newListPath, label: "Create a list" as const }
+      : { href: emailVerificationPath, label: "Verify email" as const }
+    : { href: signUpPath, label: "Start your own list" as const };
 
   return (
     <div className={styles["home-page"]}>
@@ -35,11 +40,27 @@ export default async function HomePage() {
             )}
           </p>
           <div className={styles.actions}>
-            <Link href={signUpPath} className={styles.button}>
-              {t("Create your account")}
+            <Link
+              href={user?.emailVerified ? listsPath : createAction.href}
+              className={styles.button}
+            >
+              {t(
+                user
+                  ? user.emailVerified
+                    ? "My lists"
+                    : "Verify email"
+                  : "Create your account",
+              )}
             </Link>
-            <Link href={browsePath} className={styles["secondary-button"]}>
-              {t("Browse public wishlists")}
+            <Link
+              href={user?.emailVerified ? newListPath : browsePath}
+              className={styles["secondary-button"]}
+            >
+              {t(
+                user?.emailVerified
+                  ? "Create a list"
+                  : "Browse public wishlists",
+              )}
             </Link>
           </div>
           <p className={styles.muted}>
@@ -48,7 +69,10 @@ export default async function HomePage() {
         </div>
         <HomeHeroArt artwork={artwork} />
       </section>
-      <HomeSections />
+      <HomeSections
+        createHref={createAction.href}
+        createLabel={createAction.label}
+      />
     </div>
   );
 }

@@ -18,6 +18,8 @@ const firefoxEnvironment =
 export default defineConfig({
   ...baseline,
   testMatch: [
+    "**/home-access.spec.ts",
+    "**/home-artwork.spec.ts",
     "**/native-forms.spec.ts",
     "**/user-testing.spec.ts",
     "**/filter-controls.spec.ts",

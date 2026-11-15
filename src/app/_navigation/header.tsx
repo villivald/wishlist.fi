@@ -6,7 +6,6 @@ import styles from "@/components/shell.module.css";
 import ThemeSwitcher from "@/components/theme/theme-switcher";
 import { getAuth } from "@/features/auth/actions/get-auth";
 import { signOut } from "@/features/auth/actions/sign-out";
-import { getHomePath } from "@/features/auth/utils/home-path";
 import { readAvatar } from "@/features/media/service/media";
 import { readPremiumAccess } from "@/features/premium/service/entitlements";
 import { localizedPath } from "@/i18n/config";
@@ -18,6 +17,7 @@ import {
   browsePath,
   emailVerificationPath,
   favoritesPath,
+  homePath,
   listsPath,
   reservationsPath,
   signInPath,
@@ -106,7 +106,7 @@ export default async function Header() {
   return (
     <header className={styles.header}>
       <div className={styles["header-inner"]}>
-        <Link href={getHomePath(user)} className={styles.brand}>
+        <Link href={homePath} className={styles.brand}>
           <Brand />
         </Link>
         <MainNavigation collapsible={!!user?.emailVerified} items={items} />

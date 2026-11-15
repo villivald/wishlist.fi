@@ -140,7 +140,6 @@
   "Create guest link": "Luo vieraslinkki",
   "Create list": "Luo lista",
   "Create your account": "Luo oma tili",
-  "Create your first list and make it your own.": "Luo ensimmäinen lista ja tee siitä omannäköisesi.",
   "Creating…": "Luodaan…",
   "Currency": "Valuutta",
   "Current password": "Nykyinen salasana",
@@ -1222,5 +1221,7 @@
   "With your permission, production pages use Vercel Web Analytics and Speed Insights for site usage and performance, and Google tags for advertising measurement and advertising cookies. You can choose these services separately.": "Luvallasi tuotantoympäristön sivuilla käytetään Vercel Web Analyticsia ja Speed Insightsia käytön ja suorituskyvyn mittaamiseen sekä Googlen tageja mainonnan mittaamiseen ja mainosevästeisiin. Voit valita nämä palvelut erikseen.",
   "With your permission, production pages use Vercel Web Analytics and Speed Insights to measure site usage and performance. Google advertising tracking is currently disabled.": "Luvallasi tuotantoympäristön sivuilla käytetään Vercel Web Analyticsia ja Speed Insightsia käytön ja suorituskyvyn mittaamiseen. Googlen mainonnan seuranta ei ole tällä hetkellä käytössä.",
   "Your cookie choices are saved for 180 days. Change or withdraw permission in Cookie settings in the footer. Browser Do Not Track and Global Privacy Control signals block optional tracking.": "Evästevalintasi tallennetaan 180 päiväksi. Voit muuttaa valintaa tai perua luvan alatunnisteen evästeasetuksissa. Selaimen Do Not Track- ja Global Privacy Control -asetukset estävät valinnaisen seurannan.",
-  "May we use optional analytics to measure site usage and performance? You can change your choice in Cookie settings.": "Saammeko käyttää valinnaista analytiikkaa sivuston käytön ja suorituskyvyn mittaamiseen? Voit muuttaa valintaasi evästeasetuksissa."
+  "May we use optional analytics to measure site usage and performance? You can change your choice in Cookie settings.": "Saammeko käyttää valinnaista analytiikkaa sivuston käytön ja suorituskyvyn mittaamiseen? Voit muuttaa valintaasi evästeasetuksissa.",
+  "Give your list a name, then add your first wish. A title is enough to start.": "Anna listallesi nimi ja lisää ensimmäinen toive. Pelkkä otsikko riittää alkuun.",
+  "See how Wishlist works": "Katso, miten Wishlist toimii"
 }

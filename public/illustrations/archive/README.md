@@ -7,6 +7,11 @@ stable through hydration. No client-side random choice or timed slideshow runs.
 Consecutive requests may select the same image. A cached browser navigation can
 reuse its existing server response.
 
+The same artwork is available on the homepage before and after sign-in; buttons
+adapt to account/verification state. The empty first page of My lists reuses H01
+as a compact decorative welcome image with its existing crop. No new image or
+external request is needed for that welcome.
+
 ## Hero artwork
 
 | File                             | Approved option | Work / source                                                                                                                                                                          |

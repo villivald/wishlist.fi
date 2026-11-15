@@ -140,7 +140,6 @@
   "Create guest link": "Create guest link",
   "Create list": "Create list",
   "Create your account": "Create your account",
-  "Create your first list and make it your own.": "Create your first list and make it your own.",
   "Creating…": "Creating…",
   "Currency": "Currency",
   "Current password": "Current password",
@@ -1222,5 +1221,7 @@
   "With your permission, production pages use Vercel Web Analytics and Speed Insights for site usage and performance, and Google tags for advertising measurement and advertising cookies. You can choose these services separately.": "With your permission, production pages use Vercel Web Analytics and Speed Insights for site usage and performance, and Google tags for advertising measurement and advertising cookies. You can choose these services separately.",
   "With your permission, production pages use Vercel Web Analytics and Speed Insights to measure site usage and performance. Google advertising tracking is currently disabled.": "With your permission, production pages use Vercel Web Analytics and Speed Insights to measure site usage and performance. Google advertising tracking is currently disabled.",
   "Your cookie choices are saved for 180 days. Change or withdraw permission in Cookie settings in the footer. Browser Do Not Track and Global Privacy Control signals block optional tracking.": "Your cookie choices are saved for 180 days. Change or withdraw permission in Cookie settings in the footer. Browser Do Not Track and Global Privacy Control signals block optional tracking.",
-  "May we use optional analytics to measure site usage and performance? You can change your choice in Cookie settings.": "May we use optional analytics to measure site usage and performance? You can change your choice in Cookie settings."
+  "May we use optional analytics to measure site usage and performance? You can change your choice in Cookie settings.": "May we use optional analytics to measure site usage and performance? You can change your choice in Cookie settings.",
+  "Give your list a name, then add your first wish. A title is enough to start.": "Give your list a name, then add your first wish. A title is enough to start.",
+  "See how Wishlist works": "See how Wishlist works"
 }

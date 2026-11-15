@@ -10,11 +10,11 @@ import {
 import { headers } from "next/headers";
 import { Brand } from "@/components/brand/brand";
 import { getAuth } from "@/features/auth/actions/get-auth";
-import { getHomePath } from "@/features/auth/utils/home-path";
 import { CookieSettings } from "@/features/privacy/components/privacy-preferences";
 import { Link } from "@/i18n/navigation";
 import { getText } from "@/i18n/server";
 import { communityLinks } from "@/lib/community-links";
+import { homePath } from "@/paths";
 import styles from "./footer.module.css";
 
 const communityItems: {
@@ -45,7 +45,7 @@ export default async function Footer() {
     <footer className={styles.footer}>
       <div className={styles.inner}>
         <div className={styles.intro}>
-          <Link href={getHomePath(user)} className={styles.brand}>
+          <Link href={homePath} className={styles.brand}>
             <Brand variant="footer" />
           </Link>
           <p>{t("Good things are even better shared.")}</p>

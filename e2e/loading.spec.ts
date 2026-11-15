@@ -126,7 +126,7 @@ for (const locale of ["en", "fi"]) {
   });
 }
 
-test("Wishlist navigation keeps My lists in place without a homepage redirect", async ({
+test("My lists navigation stays direct while brand links open the homepage", async ({
   page,
 }) => {
   await page.goto("/en/sign-in");
@@ -148,13 +148,17 @@ test("Wishlist navigation keeps My lists in place without a homepage redirect", 
     exact: true,
   });
 
-  await expect(brand).toHaveAttribute("href", "/en/lists");
+  await expect(brand).toHaveAttribute("href", "/en");
   const footerBrand = page.getByRole("contentinfo").getByRole("link", {
     name: "Wishlist",
     exact: true,
   });
-  await expect(footerBrand).toHaveAttribute("href", "/en/lists");
-  await brand.click();
+  await expect(footerBrand).toHaveAttribute("href", "/en");
+  await (
+    await openMainNavigation(page)
+  )
+    .getByRole("link", { name: "My lists", exact: true })
+    .click();
   await expect(page).toHaveURL(/\/lists$/);
   await expect(heading).toBeVisible();
   expect(
@@ -169,14 +173,26 @@ test("Wishlist navigation keeps My lists in place without a homepage redirect", 
     .getByRole("link", { name: "Browse", exact: true })
     .click();
   await expect(page).toHaveURL(/\/browse$/);
-  await brand.click();
+  await (
+    await openMainNavigation(page)
+  )
+    .getByRole("link", { name: "My lists", exact: true })
+    .click();
   await expect(page).toHaveURL(/\/lists$/);
   await expect(heading).toBeVisible();
 
+  await brand.click();
+  await expect(page).toHaveURL(/\/en$/);
+  await expect(
+    page.getByRole("heading", { name: "A little space for your wishes." }),
+  ).toBeVisible();
+
   await page.goto("/en/browse");
   await footerBrand.click();
-  await expect(page).toHaveURL(/\/lists$/);
-  await expect(heading).toBeVisible();
+  await expect(page).toHaveURL(/\/en$/);
+  await expect(
+    page.getByRole("heading", { name: "A little space for your wishes." }),
+  ).toBeVisible();
 });
 
 for (const locale of ["en", "fi"]) {
