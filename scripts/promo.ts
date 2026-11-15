@@ -10,10 +10,12 @@ const { prisma } = await import("../src/lib/prisma");
 
 const help = `Promo administration (uses the configured database):
   npm run promo -- create --label "Trial" --days 30 --uses 1 --valid-for-days 7
+  npm run promo -- create --label "Print campaign" --code WISHLIST30 --days 30 --uses 1000 --valid-for-days 365
   npm run promo -- list --page 1
   npm run promo -- revoke --id PROMO_ID
 
 Create prints the code once. Save it privately; only its hash is stored.
+Optional --code selects a public campaign code; omit it for a random private code.
 Revoke stops new redemptions without removing previously granted access.`;
 
 try {
@@ -22,6 +24,7 @@ try {
     options: {
       help: { type: "boolean" },
       label: { type: "string" },
+      code: { type: "string" },
       days: { type: "string" },
       uses: { type: "string" },
       "valid-for-days": { type: "string" },
@@ -32,7 +35,7 @@ try {
   const command = positionals[0];
   const allowed =
     command === "create"
-      ? ["label", "days", "uses", "valid-for-days"]
+      ? ["label", "code", "days", "uses", "valid-for-days"]
       : command === "list"
         ? ["page"]
         : command === "revoke"
@@ -49,6 +52,7 @@ try {
   } else if (command === "create") {
     const promo = await issuePromo({
       label: values.label,
+      code: values.code,
       durationDays: Number(values.days),
       maxRedemptions: Number(values.uses),
       validForDays: Number(values["valid-for-days"]),

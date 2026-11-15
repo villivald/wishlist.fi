@@ -20,11 +20,15 @@ const unavailable =
 
 const hashPromo = (normalized: string) => hashToken(`promo:${normalized}`);
 
+const generatePromoCode = () => {
+  const random = generateRandomToken().toUpperCase();
+  return `WL-${random.match(/.{8}/g)!.join("-")}`;
+};
+
 // Privileged server/CLI operation; never exposed as a server action or public API.
 export const issuePromo = async (input: unknown) => {
   const data = promoIssueSchema.parse(input);
-  const random = generateRandomToken().toUpperCase();
-  const code = `WL-${random.match(/.{8}/g)!.join("-")}`;
+  const code = data.code ?? generatePromoCode();
   const promo = await prisma.promoCode.create({
     data: {
       label: data.label,

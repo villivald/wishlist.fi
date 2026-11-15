@@ -40,6 +40,26 @@ describe("promo validation", () => {
     );
   });
 
+  it.each([
+    [" wishlist-30 ", "WISHLIST30"],
+    ["Wishlist-Fi-Welcome", "WISHLISTFIWELCOME"],
+  ])("normalizes public campaign code %s", (input, normalized) => {
+    expect(promoInputSchema.parse(input)).toBe(normalized);
+  });
+
+  it.each([
+    "SHORT",
+    "A".repeat(33),
+    "123456",
+    "WISHLIST_30",
+    "WISHLIST/30",
+    "WISHLIST🎁",
+    "TERVETULOÄ",
+    "WLWELCOME",
+  ])("rejects invalid public campaign code %s", (input) => {
+    expect(promoInputSchema.safeParse(input).success).toBe(false);
+  });
+
   it.each(["", "WL-0".repeat(10), `WL${"A".repeat(31)}`, "A".repeat(97), null])(
     "rejects malformed codes",
     (input) => {
@@ -55,8 +75,13 @@ describe("promo validation", () => {
       maxRedemptions: 1,
     };
     expect(promoIssueSchema.parse(input).label).toBe("Trial");
+    expect(promoIssueSchema.parse({ ...input, code: "wishlist-30" }).code).toBe(
+      "WISHLIST30",
+    );
     for (const override of [
       { label: " " },
+      { code: "" },
+      { code: "WLWELCOME" },
       { durationDays: 0 },
       { durationDays: 366 },
       { validForDays: 366 },

@@ -62,6 +62,42 @@ const gate = (actorId: string) =>
   );
 
 describe("Premium and promotions", () => {
+  it("issues and redeems a normalized campaign code without bypassing usage limits", async () => {
+    const account = await login();
+    const input = {
+      label: "e2e-print-campaign",
+      code: "wishlist-30",
+      durationDays: 30,
+      validForDays: 365,
+      maxRedemptions: 1,
+    };
+    const promo = await issuePromo(input);
+    expect(promo.code).toBe("WISHLIST30");
+    expect(promo.expiresAt.getTime() - Date.now()).toBeCloseTo(365 * dayMs, -4);
+    await expect(
+      issuePromo({ ...input, code: "WISHLIST30" }),
+    ).rejects.toThrow();
+    const stored = await prisma.promoCode.findUniqueOrThrow({
+      where: { id: promo.id },
+    });
+    expect(JSON.stringify(stored)).not.toContain(promo.code);
+    expect(stored.redemptionCount).toBe(0);
+
+    const result = await redeemPromo(
+      account.user.id,
+      account.session.id,
+      " wishlist-30 ",
+    );
+    expect(result.expiresAt.getTime() - Date.now()).toBeCloseTo(30 * dayMs, -4);
+    const member = await login("member");
+    await expect(
+      redeemPromo(member.user.id, member.session.id, "WISHLIST30"),
+    ).rejects.toThrow("unavailable");
+    expect(
+      await prisma.promoCode.findUnique({ where: { id: promo.id } }),
+    ).toMatchObject({ redemptionCount: 1, maxRedemptions: 1 });
+  });
+
   it("defaults to Free and stores only the code hash while granting the authenticated account", async () => {
     const account = await login();
     expect(await readPremiumAccess(account.user.id)).toEqual({
@@ -378,5 +414,30 @@ describe("Premium and promotions", () => {
     expect(
       await prisma.promoCode.findUnique({ where: { id: promo.id } }),
     ).toMatchObject({ revokedAt: expect.any(Date) });
+
+    const customArgs = [
+      "create",
+      "--label",
+      "e2e-public-cli",
+      "--code",
+      "wishlist-30",
+      "--days",
+      "30",
+      "--uses",
+      "1000",
+      "--valid-for-days",
+      "365",
+    ];
+    const custom = JSON.parse((await run(customArgs)).stdout);
+    expect(custom).toMatchObject({
+      code: "WISHLIST30",
+      durationDays: 30,
+      maxRedemptions: 1000,
+    });
+    expect(new Date(custom.expiresAt).getTime() - Date.now()).toBeCloseTo(
+      365 * dayMs,
+      -4,
+    );
+    await expect(run(customArgs)).rejects.toThrow();
   });
 });
