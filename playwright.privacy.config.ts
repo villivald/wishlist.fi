@@ -12,8 +12,13 @@ export default defineConfig({
   testIgnore: [],
   projects: [...(baseline.projects ?? []), ...(crossBrowser.projects ?? [])],
   outputDir: "test-results/privacy",
+  metadata: { advertisingEnabled: false },
   webServer: {
     ...webServer,
-    env: { ...webServer.env, VERCEL_ENV: "production" },
+    env: {
+      ...webServer.env,
+      VERCEL_ENV: "production",
+      GOOGLE_TAG_MANAGER_ENABLED: "0",
+    },
   },
 });

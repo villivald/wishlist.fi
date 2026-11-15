@@ -267,6 +267,7 @@ export const clientTextKeys = [
   "Manage sharing for {value0}",
   "Maximum price",
   "May we use optional analytics and Google advertising cookies throughout our site? You can change your choice in Cookie settings.",
+  "May we use optional analytics to measure site usage and performance? You can change your choice in Cookie settings.",
   "Member",
   "Member — view and reserve",
   "Members can view and reserve wishes. Admins can also add and edit wishes and manage the list with you.",

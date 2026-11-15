@@ -29,6 +29,7 @@ export const testEnvironment = {
   DIRECT_URL: testDatabaseUrl,
   APP_URL: testOrigin,
   GOOGLE_AUTH_ENABLED: "0",
+  GOOGLE_TAG_MANAGER_ENABLED: "0",
   GOOGLE_CLIENT_ID: "",
   GOOGLE_CLIENT_SECRET: "",
   MAILPIT_URL: "http://127.0.0.1:8026",

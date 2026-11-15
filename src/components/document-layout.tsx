@@ -17,6 +17,7 @@ import {
   PrivacyNotice,
   PrivacyPreferences,
 } from "@/features/privacy/components/privacy-preferences";
+import { googleTagManagerEnabled } from "@/features/privacy/config";
 import {
   PRIVACY_COOKIE,
   readPrivacyPreferences,
@@ -85,6 +86,7 @@ export default async function DocumentLayout({
           )}
           <PrivacyPreferences
             enabled={process.env.VERCEL_ENV === "production"}
+            advertisingEnabled={googleTagManagerEnabled()}
             preferences={privacy}
           >
             <ThemeProvider>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import styles from "@/components/shell.module.css";
+import { googleTagManagerEnabled } from "@/features/privacy/config";
 import { Link } from "@/i18n/navigation";
 import { getText } from "@/i18n/server";
 import { createText } from "@/i18n/text";
@@ -227,7 +228,24 @@ const information = (
         </p>
         <p>
           {t(
-            "Cookies keep you signed in and remember access granted by a guest link. Your theme preference is stored in your browser. Optional performance measurements use no visitor identifiers.",
+            "Cookies keep you signed in, remember guest-link access, and save your language choice. Your theme preference stays in your browser.",
+          )}
+        </p>
+        <p>
+          {t(
+            "Optional first-party performance monitoring records numerical timings and general page types without advertising cookies, visitor identifiers, search text or list content. It excludes guest-link exchange and payment pages and respects Do Not Track and Global Privacy Control.",
+          )}
+        </p>
+        <p>
+          {t(
+            googleTagManagerEnabled()
+              ? "With your permission, production pages use Vercel Web Analytics and Speed Insights for site usage and performance, and Google tags for advertising measurement and advertising cookies. You can choose these services separately."
+              : "With your permission, production pages use Vercel Web Analytics and Speed Insights to measure site usage and performance. Google advertising tracking is currently disabled.",
+          )}
+        </p>
+        <p>
+          {t(
+            "Your cookie choices are saved for 180 days. Change or withdraw permission in Cookie settings in the footer. Browser Do Not Track and Global Privacy Control signals block optional tracking.",
           )}
         </p>
         <h2>{t("Your controls")}</h2>

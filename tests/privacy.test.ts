@@ -1,6 +1,7 @@
 import { runInNewContext } from "node:vm";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import GoogleTagManager from "@/components/google-tag-manager";
+import { googleTagManagerEnabled } from "@/features/privacy/config";
 import {
   googleConsent,
   readPrivacyPreferences,
@@ -9,6 +10,18 @@ import {
 import { sanitizeTrackingEvent } from "@/features/privacy/routes";
 
 describe("optional tracking boundaries", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("disables Google tags unless explicitly enabled independently of sign-in", () => {
+    vi.stubEnv("GOOGLE_AUTH_ENABLED", "1");
+    for (const value of [undefined, "", "0", "true", " 1 "]) {
+      vi.stubEnv("GOOGLE_TAG_MANAGER_ENABLED", value);
+      expect(googleTagManagerEnabled()).toBe(false);
+    }
+    vi.stubEnv("GOOGLE_TAG_MANAGER_ENABLED", "1");
+    expect(googleTagManagerEnabled()).toBe(true);
+  });
+
   it("does not authorize Google storage with Vercel-only consent", () => {
     expect(googleConsent({ analytics: true, marketing: false })).toEqual({
       analytics_storage: "denied",

@@ -2,6 +2,9 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
 import { accounts, resetFixtures } from "./seed";
 
+const advertisingEnabled = () =>
+  test.info().config.metadata.advertisingEnabled === true;
+
 const installTrackingStubs = async (page: Page) => {
   const googleRequests: string[] = [];
   const vercelRequests: string[] = [];
@@ -42,6 +45,16 @@ test("nothing loads before consent; choices isolate services and withdrawal unlo
     .getByRole("button", { name: "Cookie settings", exact: true })
     .click();
   await dialog.getByRole("checkbox", { name: /^Analytics/ }).uncheck();
+  if (!advertisingEnabled()) {
+    await expect(
+      dialog.getByRole("checkbox", { name: /^Advertising/ }),
+    ).toHaveCount(0);
+    await dialog.getByRole("button", { name: "Save cookie choices" }).click();
+    await expect(dialog).not.toBeVisible();
+    expect(requests.googleRequests).toEqual([]);
+    await expect(page.locator("script[src*='/_vercel/']")).toHaveCount(0);
+    return;
+  }
   await dialog.getByRole("checkbox", { name: /^Advertising/ }).check();
   await dialog.getByRole("button", { name: "Save cookie choices" }).click();
   await expect.poll(() => requests.googleRequests.length).toBe(1);
@@ -107,7 +120,7 @@ test("app pages offer consent and keep essential-only tracking disabled", async 
   expect(requests.vercelRequests).toEqual([]);
 });
 
-test("consented pages load all three trackers across both languages and route groups", async ({
+test("saved consent loads only enabled services across languages and route groups", async ({
   page,
   context,
 }) => {
@@ -118,6 +131,11 @@ test("consented pages load all three trackers across both languages and route gr
       value: "v1.a1.m1",
       url: "http://127.0.0.1:3017",
     },
+    ...["_ga", "_gcl_au"].map((name) => ({
+      name,
+      value: "old-google-cookie",
+      url: "http://127.0.0.1:3017",
+    })),
   ]);
   for (const path of [
     "/en",
@@ -134,13 +152,24 @@ test("consented pages load all three trackers across both languages and route gr
     const vercelCount = requests.vercelRequests.length;
     await page.goto(path);
     await expect(page.locator("#main-content")).toBeVisible();
-    await expect(page.locator("#google-tag-manager-init"), path).toHaveCount(1);
+    await expect(page.locator("#google-tag-manager-init"), path).toHaveCount(
+      advertisingEnabled() ? 1 : 0,
+    );
     await expect
       .poll(() => requests.googleRequests.length, { message: path })
-      .toBe(googleCount + 1);
+      .toBe(googleCount + Number(advertisingEnabled()));
     await expect
       .poll(() => requests.vercelRequests.length, { message: path })
       .toBe(vercelCount + 2);
+    if (!advertisingEnabled()) {
+      await expect
+        .poll(async () =>
+          (await context.cookies()).filter(({ name }) =>
+            ["_ga", "_gcl_au"].includes(name),
+          ),
+        )
+        .toEqual([]);
+    }
   }
 });
 
@@ -161,7 +190,9 @@ test("unknown nested URLs retain localized error pages and consented tracking", 
   await expect(
     page.getByRole("heading", { name: "Sivua ei löytynyt" }),
   ).toBeVisible();
-  await expect.poll(() => requests.googleRequests.length).toBe(1);
+  await expect
+    .poll(() => requests.googleRequests.length)
+    .toBe(Number(advertisingEnabled()));
   await expect.poll(() => requests.vercelRequests.length).toBe(2);
 });
 
@@ -185,13 +216,17 @@ test("consented tracking survives sign-in, information-page navigation, and sign
     .fill(accounts.owner.password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/en\/lists$/);
-  await expect.poll(() => requests.googleRequests.length).toBe(1);
+  await expect
+    .poll(() => requests.googleRequests.length)
+    .toBe(Number(advertisingEnabled()));
   await expect.poll(() => requests.vercelRequests.length).toBe(2);
   await page
     .getByRole("contentinfo")
     .getByRole("link", { name: "Free and Premium", exact: true })
     .click();
-  await expect.poll(() => requests.googleRequests.length).toBe(1);
+  await expect
+    .poll(() => requests.googleRequests.length)
+    .toBe(Number(advertisingEnabled()));
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(page).toHaveURL(/\/en\/sign-in$/);
   expect(
@@ -199,7 +234,54 @@ test("consented tracking survives sign-in, information-page navigation, and sign
       () =>
         (window as Window & { __googleTagLoaded?: boolean }).__googleTagLoaded,
     ),
-  ).toBe(true);
+  ).toBe(advertisingEnabled() ? true : undefined);
+});
+
+test("notice, settings, allow-all consent and privacy copy match available services", async ({
+  page,
+  context,
+}) => {
+  const requests = await installTrackingStubs(page);
+  for (const locale of ["en", "fi"]) {
+    await context.clearCookies();
+    await page.goto(`/${locale}/privacy`);
+    const notice = page.getByRole("region", {
+      name: locale === "en" ? "Your privacy choices" : "Yksityisyysvalintasi",
+    });
+    await expect(notice).toBeVisible();
+    const disabledCopy = page.getByText(
+      locale === "en"
+        ? "Google advertising tracking is currently disabled."
+        : "Googlen mainonnan seuranta ei ole tällä hetkellä käytössä.",
+      { exact: false },
+    );
+    await expect(disabledCopy).toHaveCount(advertisingEnabled() ? 0 : 1);
+    if (!advertisingEnabled()) await expect(notice).not.toContainText("Google");
+    await notice
+      .getByRole("button", {
+        name: locale === "en" ? "Cookie settings" : "Evästeasetukset",
+        exact: true,
+      })
+      .click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("checkbox")).toHaveCount(
+      advertisingEnabled() ? 2 : 1,
+    );
+    await page.keyboard.press("Escape");
+    await notice
+      .getByRole("button", {
+        name: locale === "en" ? "Allow all" : "Salli kaikki",
+        exact: true,
+      })
+      .click();
+    await expect(notice).toHaveCount(0);
+    expect(
+      (await context.cookies()).find(({ name }) => name === "wishlist-privacy")
+        ?.value,
+    ).toBe(`v1.a1.m${Number(advertisingEnabled())}`);
+    await expect.poll(() => requests.vercelRequests.length).toBeGreaterThan(0);
+    if (!advertisingEnabled()) expect(requests.googleRequests).toEqual([]);
+  }
 });
 
 test("browser privacy signals override saved consent", async ({

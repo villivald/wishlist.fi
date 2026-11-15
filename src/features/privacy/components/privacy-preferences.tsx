@@ -29,6 +29,7 @@ import styles from "./privacy.module.css";
 
 const PrivacyContext = createContext<{
   enabled: boolean;
+  advertisingEnabled: boolean;
   showNotice: boolean;
   open: (trigger: HTMLButtonElement) => void;
   save: (preferences: Preferences) => void;
@@ -64,10 +65,12 @@ const clearTrackingCookies = (preferences: Preferences) => {
 export function PrivacyPreferences({
   children,
   enabled,
+  advertisingEnabled,
   preferences,
 }: {
   children: React.ReactNode;
   enabled: boolean;
+  advertisingEnabled: boolean;
   preferences: Preferences | null;
 }) {
   const t = useText();
@@ -91,20 +94,32 @@ export function PrivacyPreferences({
     heading.current?.focus({ preventScroll: true });
     if (dialog.current) dialog.current.scrollTop = 0;
   }, []);
-  const save = useCallback((next: Preferences) => {
-    document.cookie = `${PRIVACY_COOKIE}=${serializePrivacyPreferences(next)}; Path=/; Max-Age=15552000; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
-    const gtag = (window as Window & { gtag?: (...args: unknown[]) => void })
-      .gtag;
-    gtag?.("consent", "update", googleConsent(next));
-    clearTrackingCookies(next);
-    try {
-      localStorage.setItem(PRIVACY_CHANGE_EVENT, String(Date.now()));
-    } catch {
-      // The preference cookie works even when browser storage is unavailable.
-    }
-    // A new document unloads scripts and listeners after withdrawing consent.
-    location.reload();
-  }, []);
+  const save = useCallback(
+    (choices: Preferences) => {
+      const next = {
+        analytics: choices.analytics,
+        marketing: advertisingEnabled && choices.marketing,
+      };
+      document.cookie = `${PRIVACY_COOKIE}=${serializePrivacyPreferences(next)}; Path=/; Max-Age=15552000; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`;
+      const gtag = (window as Window & { gtag?: (...args: unknown[]) => void })
+        .gtag;
+      gtag?.("consent", "update", googleConsent(next));
+      clearTrackingCookies(next);
+      try {
+        localStorage.setItem(PRIVACY_CHANGE_EVENT, String(Date.now()));
+      } catch {
+        // The preference cookie works even when browser storage is unavailable.
+      }
+      // A new document unloads scripts and listeners after withdrawing consent.
+      location.reload();
+    },
+    [advertisingEnabled],
+  );
+
+  useEffect(() => {
+    if (!advertisingEnabled)
+      clearTrackingCookies({ analytics: false, marketing: false });
+  }, [advertisingEnabled]);
 
   useEffect(() => {
     const changed = (event: StorageEvent) => {
@@ -130,7 +145,13 @@ export function PrivacyPreferences({
 
   return (
     <PrivacyContext
-      value={{ enabled, showNotice: enabled && !preferences, open, save }}
+      value={{
+        enabled,
+        advertisingEnabled,
+        showNotice: enabled && !preferences,
+        open,
+        save,
+      }}
     >
       {children}
       {enabled && (
@@ -169,16 +190,20 @@ export function PrivacyPreferences({
               <strong>{t("Analytics")}</strong>
               <span>{t("Vercel site usage and performance.")}</span>
             </label>
-            <label className={styles.option}>
-              <input
-                type="checkbox"
-                name="advertising"
-                checked={advertising}
-                onChange={(event) => setAdvertising(event.target.checked)}
-              />
-              <strong>{t("Advertising")}</strong>
-              <span>{t("Google ad measurement and advertising cookies.")}</span>
-            </label>
+            {advertisingEnabled && (
+              <label className={styles.option}>
+                <input
+                  type="checkbox"
+                  name="advertising"
+                  checked={advertising}
+                  onChange={(event) => setAdvertising(event.target.checked)}
+                />
+                <strong>{t("Advertising")}</strong>
+                <span>
+                  {t("Google ad measurement and advertising cookies.")}
+                </span>
+              </label>
+            )}
             {trackingAllowed === false && (
               <p>
                 {t("Your browser’s privacy signal blocks optional tracking.")}
@@ -202,9 +227,12 @@ export function PrivacyPreferences({
           </form>
         </dialog>
       )}
-      {enabled && trackingAllowed && preferences?.marketing && (
-        <GoogleTagManager analytics={preferences.analytics} />
-      )}
+      {enabled &&
+        advertisingEnabled &&
+        trackingAllowed &&
+        preferences?.marketing && (
+          <GoogleTagManager analytics={preferences.analytics} />
+        )}
       {enabled && trackingAllowed && preferences?.analytics && (
         <>
           <Analytics beforeSend={sanitizeTrackingEvent} />
@@ -240,7 +268,9 @@ export function PrivacyNotice() {
         <h2 id={headingId}>{t("Your privacy choices")}</h2>
         <p>
           {t(
-            "May we use optional analytics and Google advertising cookies throughout our site? You can change your choice in Cookie settings.",
+            privacy.advertisingEnabled
+              ? "May we use optional analytics and Google advertising cookies throughout our site? You can change your choice in Cookie settings."
+              : "May we use optional analytics to measure site usage and performance? You can change your choice in Cookie settings.",
           )}{" "}
           <Link href="/privacy">{t("Privacy")}</Link>
         </p>
