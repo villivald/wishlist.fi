@@ -70,20 +70,34 @@ const information = (
             <a href="https://openfontlicense.org/">SIL Open Font License</a>.
           </li>
           <li>
-            {t("Unmodified homepage illustrations by")}{" "}
-            <a href="https://openmoji.org/">OpenMoji</a>
-            {t(", licensed under")}{" "}
-            <a href="https://creativecommons.org/licenses/by-sa/4.0/">
-              CC BY-SA 4.0
+            {t("Hero artwork:")}{" "}
+            <a href="https://commons.wikimedia.org/wiki/File:Hilma_af_Klint_-_The_Ten_Largest_No._2_-_Childhood_-_1907.jpg">
+              Hilma af Klint
             </a>
-            .
+            ,{" "}
+            <a href="https://publicdomainreview.org/collection/japanese-designs-1902/">
+              Shin-Bijutsukai (1902)
+            </a>
+            ,{" "}
+            <a href="https://www.metmuseum.org/art/collection/search/437379">
+              Odilon Redon
+            </a>
+            . {t("Public domain; cropped for display.")}
           </li>
           <li>
-            {t("Botanical illustration from")}{" "}
-            <a href="https://publicdomainreview.org/collection/hortus-malabaricus-1678-1693/">
-              Hortus Malabaricus (1678–1693)
+            {t("Example wishlist artwork:")}{" "}
+            <a href="https://www.nga.gov/artworks/126162-take-your-choice">
+              John Frederick Peto
             </a>
-            {t(", via The Public Domain Review. Public domain.")}
+            ,{" "}
+            <a href="https://www.nga.gov/artworks/19484-cup-and-saucer">
+              Lillian Causey
+            </a>
+            ,{" "}
+            <a href="https://collections.artsmia.org/art/73805">
+              Mrs. E. W. Wirt
+            </a>
+            . {t("Public domain; cropped for display.")}
           </li>
           <li>
             {t("Botanical and Waves feature artwork from")}{" "}
@@ -91,6 +105,20 @@ const information = (
               Shin-Bijutsukai (1902)
             </a>
             {t(", via The Public Domain Image Archive.")}
+          </li>
+          <li>
+            {t("Electric geometry")}:{" "}
+            <a href="https://www.metmuseum.org/art/collection/search/363729">
+              Christopher Dresser · Design drawing (c. 1883)
+            </a>
+            . {t("Public domain; cropped for display.")}
+          </li>
+          <li>
+            {t("Cosmic circles")}:{" "}
+            <a href="https://commons.wikimedia.org/wiki/File:Vassily_Kandinsky,_1926_-_Several_Circles,_Gugg_0910_25.jpg">
+              Wassily Kandinsky · Several Circles (1926)
+            </a>
+            . {t("Public domain; cropped for display.")}
           </li>
         </ul>
       </>

@@ -386,7 +386,7 @@ test("Finnish invitations use the recipient's saved language and keep the accept
   await signIn(page, accounts.member, "en");
   await page.goto("/en/lists/e2e-private-list/sharing");
   await page
-    .getByLabel("Invitation email", { exact: true })
+    .getByRole("textbox", { name: "Invitation email", exact: true })
     .fill(accounts.owner.email);
   await page
     .getByRole("button", { name: "Send invitation", exact: true })

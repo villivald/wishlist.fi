@@ -80,7 +80,7 @@ export default async function PremiumPage() {
           <h2 id="theme-demo-heading">{t("Choose a theme for your list")}</h2>
           <p>
             {t(
-              "Choose Christmas, Birthday, Baby & kids, or Love for a special occasion. Botanical and Waves suit everyday lists. Preview them here and save your choice in List settings.",
+              "Choose Christmas, Birthday, Baby & kids, or Love for a special occasion. Botanical, Waves, Electric geometry, and Cosmic circles suit everyday lists. Preview them here and save your choice in List settings.",
             )}
           </p>
         </div>
@@ -91,6 +91,17 @@ export default async function PremiumPage() {
             Shin-Bijutsukai (1902)
           </a>
           {t(", via The Public Domain Image Archive.")}
+        </p>
+        <p className={styles["art-credit"]}>
+          {t("Electric geometry")}:{" "}
+          <a href="https://www.metmuseum.org/art/collection/search/363729">
+            Christopher Dresser · Design drawing (c. 1883)
+          </a>
+          . {t("Cosmic circles")}:{" "}
+          <a href="https://commons.wikimedia.org/wiki/File:Vassily_Kandinsky,_1926_-_Several_Circles,_Gugg_0910_25.jpg">
+            Wassily Kandinsky · Several Circles (1926)
+          </a>
+          . {t("Public domain; cropped for display.")}
         </p>
       </section>
       <section className={styles["sharing-feature"]}>

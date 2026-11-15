@@ -111,7 +111,7 @@ export function ThemePicker({
           ) : (
             <>
               {t(
-                "Premium unlocks six curated themes. Your existing theme stays when Premium ends.",
+                "Premium unlocks eight curated themes. Your existing theme stays when Premium ends.",
               )}{" "}
               <Link href="/premium">{t("Explore Premium")}</Link>
             </>

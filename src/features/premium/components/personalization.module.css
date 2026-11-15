@@ -54,6 +54,10 @@
   border-bottom: 1px solid var(--border);
 }
 
+.theme:where([data-list-theme="cosmic"]) .artwork {
+  object-position: center 72%;
+}
+
 .media .content {
   padding: 0;
 }

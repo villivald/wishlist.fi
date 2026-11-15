@@ -527,20 +527,6 @@
   outline-color: var(--primary-foreground);
 }
 
-.hero-art {
-  min-width: 0;
-  padding: 0.75rem;
-}
-
-.hero-art img {
-  display: block;
-  width: 100%;
-  height: auto;
-  border: 0.75rem solid #fffdf5;
-  box-shadow: 0.55rem 0.55rem 0 var(--primary-foreground);
-  transform: rotate(4deg);
-}
-
 .page {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -1066,11 +1052,6 @@
 
   .hero {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .hero-art {
-    width: min(100%, 22rem);
-    justify-self: center;
   }
 
   .hero h1 {

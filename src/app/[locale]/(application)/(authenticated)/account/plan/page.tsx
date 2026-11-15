@@ -115,7 +115,7 @@ export default async function PlanPage({
           </h2>
           <ul className={styles.benefits}>
             <li>
-              {t("Six curated list themes and downloadable sharing cards.")}
+              {t("Eight curated list themes and downloadable sharing cards.")}
             </li>
             <li>{t("An optional Premium badge on your public profile.")}</li>
             <li>{t("Choose who can see your lists.")}</li>

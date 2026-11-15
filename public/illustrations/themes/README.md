@@ -1,6 +1,6 @@
 # Wishlist theme artwork
 
-Six locally hosted WebP designs, 1000 × 700 pixels, quality 82. The UI crops these
+Eight locally hosted WebP designs, 1000 × 700 pixels, quality 82–88. The UI crops these
 into thumbnails and shallow header strips; downloaded PNGs use a side strip.
 Titles and QR codes stay on plain paper. No insect imagery is included.
 
@@ -61,3 +61,36 @@ Original JPEG URL pattern:
 where `NNNN` matches the filename above. Downloaded 24 October 2026 at width 1000,
 then cropped to landscape and converted to WebP without recoloring.
 The Premium and About pages link the collection credit.
+
+## Additional everyday themes
+
+Added 14 November 2026 after reviewing designs through Arkivism. The original
+colours are preserved. Both assets are encoded at quality 88; their artwork also
+appears in exported sharing cards, with titles and QR codes on plain paper.
+
+| File                     | Theme                                 | Work / source                                                                                                                                                                                             |
+| ------------------------ | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `electric-geometry.webp` | Electric geometry / Värikäs geometria | N02: Christopher Dresser, _Design drawing_ (c. 1883), [The Metropolitan Museum of Art](https://www.metmuseum.org/art/collection/search/363729)                                                            |
+| `cosmic-circles.webp`    | Cosmic circles / Kosmiset ympyrät     | N09: Wassily Kandinsky, _Several Circles_ (1926), [Wikimedia Commons / Solomon R. Guggenheim Museum](https://commons.wikimedia.org/wiki/File:Vassily_Kandinsky,_1926_-_Several_Circles,_Gugg_0910_25.jpg) |
+
+The Met labels the Dresser work Public Domain / CC0. Commons labels the Kandinsky
+reproduction public domain. The app's Premium and About pages link to the sources.
+
+Original source images:
+
+- N02: https://images.metmuseum.org/CRDImages/dp/original/DP801229.jpg
+- N09: https://upload.wikimedia.org/wikipedia/commons/0/0e/Vassily_Kandinsky%2C_1926_-_Several_Circles%2C_Gugg_0910_25.jpg
+
+N02 uses the original 1397 × 3970 image: a crop starting at 11.5% from the left
+and 32.3% from the top, with 78% of its width and 18% of its height, then a centred
+10:7 crop. This isolates the approved colourful geometric panel without its scan
+borders. N09 uses a centred 10:7 crop of the 1800 × 1833 source. Both assets are
+resized to 1000 × 700 pixels without recolouring.
+
+The Cosmic circles header uses `object-position: center 72%` to keep the cluster
+of overlapping coloured circles visible in wide headers. Picker thumbnails keep
+the default 45% crop.
+
+Migration `20261114000200_final_archive_list_themes` replaces saved Mosaic and
+Sunrise selections with Electric geometry and Cosmic circles, respectively, and
+updates the database constraint. Keep the earlier applied migration unchanged.

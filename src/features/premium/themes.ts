@@ -1,3 +1,4 @@
+// Keep new IDs in sync with Wishlist_theme_check through a database migration.
 export const listThemeIds = [
   "classic",
   "botanical",
@@ -6,6 +7,8 @@ export const listThemeIds = [
   "birthday",
   "wedding",
   "playful",
+  "geometry",
+  "cosmic",
 ] as const;
 export type ListThemeId = (typeof listThemeIds)[number];
 
@@ -14,7 +17,10 @@ export const listThemeGroups = [
     name: "Occasions & family",
     themes: ["festive", "birthday", "playful", "wedding"],
   },
-  { name: "Everyday styles", themes: ["classic", "botanical", "minimal"] },
+  {
+    name: "Everyday styles",
+    themes: ["classic", "botanical", "minimal", "geometry", "cosmic"],
+  },
 ] as const;
 
 export const listThemes = {
@@ -84,6 +90,26 @@ export const listThemes = {
     accent: "#69765d",
     paper: "#f3f1e6",
     ink: "#3c4635",
+  },
+  geometry: {
+    name: "Electric geometry",
+    artwork: "electric-geometry.webp",
+    example: "For my home",
+    description:
+      "Bold purple, green, and ochre shapes for a colorful everyday list.",
+    accent: "#566a78",
+    paper: "#f0eef3",
+    ink: "#34303f",
+  },
+  cosmic: {
+    name: "Cosmic circles",
+    artwork: "cosmic-circles.webp",
+    example: "A few things I love",
+    description:
+      "Luminous circles on a dark sky for wishes with a cosmic feel.",
+    accent: "#536f99",
+    paper: "#eef1f7",
+    ink: "#303b50",
   },
 } as const;
 

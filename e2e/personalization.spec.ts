@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
+import { listThemeIds, listThemes } from "../src/features/premium/themes";
 import { accounts, resetFixtures, testPrisma } from "./seed";
 const listId = "e2e-personalized-list";
 const signIn = async (page: Page) => {
@@ -35,79 +36,85 @@ test.beforeEach(async () => {
     await db.$disconnect();
   }
 });
-test("themes persist, show in the list and export a QR card", async ({
-  page,
-}, info) => {
-  await signIn(page);
-  await page.goto(`/en/lists/${listId}/edit`);
-  await page.getByRole("radio", { name: "Botanical", exact: true }).check();
-  await page.getByRole("button", { name: "Save changes", exact: true }).click();
-  await expect(
-    page.getByRole("status").filter({ hasText: "Changes saved." }),
-  ).toBeVisible();
-  await page.reload();
-  await expect(
-    page.getByRole("radio", { name: "Botanical", exact: true }),
-  ).toBeChecked();
-  await page.screenshot({
-    path: info.outputPath("list-settings.png"),
-    fullPage: true,
+for (const theme of ["botanical", "geometry", "cosmic"] as const) {
+  test(`${theme}: themes persist, show in the list and export a QR card`, async ({
+    page,
+  }, info) => {
+    await signIn(page);
+    await page.goto(`/en/lists/${listId}/edit`);
+    await page
+      .getByRole("radio", { name: listThemes[theme].name, exact: true })
+      .check();
+    await page
+      .getByRole("button", { name: "Save changes", exact: true })
+      .click();
+    await expect(
+      page.getByRole("status").filter({ hasText: "Changes saved." }),
+    ).toBeVisible();
+    await page.reload();
+    await expect(
+      page.getByRole("radio", { name: listThemes[theme].name, exact: true }),
+    ).toBeChecked();
+    await page.screenshot({
+      path: info.outputPath("list-settings.png"),
+      fullPage: true,
+    });
+    await page.goto(`/en/lists/${listId}`);
+    await expect(
+      page.getByRole("heading", { name: "Birthday wishes", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.locator(`[data-list-theme="${theme}"]:visible`),
+    ).toBeVisible();
+    const sharingButton = page.getByRole("button", {
+      name: "QR card",
+      exact: true,
+    });
+    await sharingButton.click();
+    const dialog = page.getByRole("dialog", {
+      name: "QR card",
+    });
+    await expect(dialog).toBeVisible();
+    await expect(
+      dialog.getByText("PNG image · 1200 × 800 pixels · QR code included"),
+    ).toBeVisible();
+    const preview = dialog.getByRole("img", {
+      name: "QR card for Birthday wishes",
+    });
+    await expect(preview).toBeVisible();
+    await expect
+      .poll(() =>
+        preview.evaluate(
+          (image: HTMLImageElement) =>
+            image.complete && image.naturalWidth === 1200,
+        ),
+      )
+      .toBe(true);
+    const toolbarDownload = page.waitForEvent("download");
+    await dialog
+      .getByRole("link", { name: "Download QR card", exact: true })
+      .click();
+    expect(await (await toolbarDownload).failure()).toBeNull();
+    await page.screenshot({
+      path: info.outputPath("sharing-card-dialog.png"),
+      fullPage: true,
+    });
+    const dialogAudit = await new AxeBuilder({ page }).analyze();
+    expect(dialogAudit.violations).toEqual([]);
+    await page.keyboard.press("Escape");
+    await expect(dialog).not.toBeVisible();
+    await expect(sharingButton).toBeFocused();
+    await expect(
+      page.locator(`[data-list-theme="${theme}"]:visible`),
+    ).toContainText("Birthday wishes");
+    await page.screenshot({
+      path: info.outputPath("themed-list.png"),
+      fullPage: true,
+    });
+    const errors = await new AxeBuilder({ page }).include("main").analyze();
+    expect(errors.violations).toEqual([]);
   });
-  await page.goto(`/en/lists/${listId}`);
-  await expect(
-    page.getByRole("heading", { name: "Birthday wishes", exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.locator('[data-list-theme="botanical"]:visible'),
-  ).toBeVisible();
-  const sharingButton = page.getByRole("button", {
-    name: "QR card",
-    exact: true,
-  });
-  await sharingButton.click();
-  const dialog = page.getByRole("dialog", {
-    name: "QR card",
-  });
-  await expect(dialog).toBeVisible();
-  await expect(
-    dialog.getByText("PNG image · 1200 × 800 pixels · QR code included"),
-  ).toBeVisible();
-  const preview = dialog.getByRole("img", {
-    name: "QR card for Birthday wishes",
-  });
-  await expect(preview).toBeVisible();
-  await expect
-    .poll(() =>
-      preview.evaluate(
-        (image: HTMLImageElement) =>
-          image.complete && image.naturalWidth === 1200,
-      ),
-    )
-    .toBe(true);
-  const toolbarDownload = page.waitForEvent("download");
-  await dialog
-    .getByRole("link", { name: "Download QR card", exact: true })
-    .click();
-  expect(await (await toolbarDownload).failure()).toBeNull();
-  await page.screenshot({
-    path: info.outputPath("sharing-card-dialog.png"),
-    fullPage: true,
-  });
-  const dialogAudit = await new AxeBuilder({ page }).analyze();
-  expect(dialogAudit.violations).toEqual([]);
-  await page.keyboard.press("Escape");
-  await expect(dialog).not.toBeVisible();
-  await expect(sharingButton).toBeFocused();
-  await expect(
-    page.locator('[data-list-theme="botanical"]:visible'),
-  ).toContainText("Birthday wishes");
-  await page.screenshot({
-    path: info.outputPath("themed-list.png"),
-    fullPage: true,
-  });
-  const errors = await new AxeBuilder({ page }).include("main").analyze();
-  expect(errors.violations).toEqual([]);
-});
+}
 test("profile badge is opt-in and can be hidden", async ({ page }) => {
   await signIn(page);
   await page.goto("/en/account/profile");
@@ -256,15 +263,8 @@ test("premium showcase works in both languages and themes without overflow", asy
 }, info) => {
   for (const locale of ["en", "fi"]) {
     await page.goto(`/${locale}/premium`);
-    await expect(page.getByRole("radio")).toHaveCount(7);
-    for (const theme of [
-      "festive",
-      "birthday",
-      "playful",
-      "wedding",
-      "botanical",
-      "minimal",
-    ]) {
+    await expect(page.getByRole("radio")).toHaveCount(listThemeIds.length);
+    for (const theme of listThemeIds.filter((id) => id !== "classic")) {
       const choice = page.locator(`label[data-theme="${theme}"]`);
       await choice.getByRole("radio").check();
       await expect(page.locator(`[data-list-theme="${theme}"]`)).toBeVisible();

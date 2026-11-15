@@ -1,4 +1,6 @@
-import Image from "next/image";
+import { randomInt } from "node:crypto";
+import { HomeHeroArt } from "@/components/home/home-hero-art";
+import { homeHeroArtworks } from "@/components/home/home-hero-artworks";
 import { HomeSections } from "@/components/home/home-sections";
 import styles from "@/components/shell.module.css";
 import { getAuth } from "@/features/auth/actions/get-auth";
@@ -16,6 +18,8 @@ export default async function HomePage() {
   if (user) {
     return await redirect(getHomePath(user));
   }
+
+  const artwork = homeHeroArtworks[randomInt(homeHeroArtworks.length)];
 
   return (
     <div className={styles["home-page"]}>
@@ -42,16 +46,7 @@ export default async function HomePage() {
             {t("Free to start. Yours to make personal.")}
           </p>
         </div>
-        <div className={styles["hero-art"]} aria-hidden="true">
-          <Image
-            src="/illustrations/archive/hortus-malabaricus.jpg"
-            width={480}
-            height={395}
-            sizes="(max-width: 760px) 320px, 400px"
-            alt=""
-            preload
-          />
-        </div>
+        <HomeHeroArt artwork={artwork} />
       </section>
       <HomeSections />
     </div>

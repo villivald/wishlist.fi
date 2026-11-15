@@ -1,5 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { EMPTY_ACTION_STATE } from "@/components/form/utils/to-action-state";
+import { listThemeIds } from "@/features/premium/themes";
 import { cancelReservation } from "@/features/reservation/service/reservations";
 import {
   changePublication,
@@ -218,6 +219,51 @@ describe("wishlist management and authorization", () => {
       ownerId: "e2e-owner",
       publication: "PUBLISHED",
       visibility: "PUBLIC",
+    });
+  });
+
+  it.each(listThemeIds)(
+    "persists the %s theme through creation and settings actions",
+    async (theme) => {
+      await prisma.premiumGrant.create({
+        data: {
+          userId: "e2e-owner",
+          startsAt: new Date(Date.now() - 1000),
+          expiresAt: new Date(Date.now() + 86400000),
+        },
+      });
+      const data = new FormData();
+      data.set("title", `Theme ${theme}`);
+      data.set("theme", theme);
+      await expect(createList(EMPTY_ACTION_STATE, data)).rejects.toThrow(
+        "REDIRECT:/en/lists/",
+      );
+      const created = await prisma.wishlist.findFirstOrThrow({
+        where: { title: `Theme ${theme}` },
+      });
+      expect(created.theme).toBe(theme);
+
+      const list = await createWishlist("e2e-owner", input);
+      data.set("title", input.title);
+      expect(await updateList(list.id, EMPTY_ACTION_STATE, data)).toMatchObject(
+        { status: "SUCCESS", message: "Changes saved." },
+      );
+      expect(await readManagedWishlist(list.id, "e2e-owner")).toMatchObject({
+        theme,
+      });
+    },
+  );
+
+  it("rejects unsupported themes at the database boundary", async () => {
+    const list = await createWishlist("e2e-owner", input);
+    await expect(
+      prisma.wishlist.update({
+        where: { id: list.id },
+        data: { theme: "unsupported" },
+      }),
+    ).rejects.toThrow("Wishlist_theme_check");
+    expect(await readManagedWishlist(list.id, "e2e-owner")).toMatchObject({
+      theme: "classic",
     });
   });
 
