@@ -19,7 +19,9 @@ export async function GoogleOption({
   const query = new URLSearchParams({ locale, intent });
   if (returnTo) query.set("returnTo", returnTo);
   return (
-    <div className={styles.option}>
+    <div
+      className={`${styles.option}${intent === "connect" ? ` ${styles.compact}` : ""}`}
+    >
       <form method="post" action={`/api/auth/google/start?${query}`}>
         <button type="submit" className={styles.button}>
           <Image

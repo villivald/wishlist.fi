@@ -38,8 +38,9 @@
 
 .footer .face {
   fill: var(--primary);
-  stroke: var(--foreground);
-  stroke-width: 0.9;
+  stroke: var(--primary-foreground);
+  stroke-width: 3;
+  paint-order: stroke fill;
 }
 
 .name {

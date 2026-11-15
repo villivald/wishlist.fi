@@ -12,6 +12,11 @@
   min-width: 0;
 }
 
+.compact {
+  width: fit-content;
+  max-width: 100%;
+}
+
 .option form {
   min-width: 0;
 }
