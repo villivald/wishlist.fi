@@ -35,7 +35,9 @@ export async function queueGroupEmail(
   const email = (
     <GroupEmail
       kind={input.kind}
-      actorName={actor.name ?? actor.username}
+      actorName={
+        actor.name ? `${actor.name} (@${actor.username})` : `@${actor.username}`
+      }
       locale={recipient.locale}
       url={emailUrl(
         reservationGroupPath(input.reservationId),

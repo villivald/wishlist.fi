@@ -78,7 +78,7 @@ export default function GroupEmail({
 
 GroupEmail.PreviewProps = {
   kind: "INVITED",
-  actorName: "Alex",
+  actorName: "Alex (@alex)",
   url: "http://localhost:3000/en/reservations/example",
   locale: "en",
 } satisfies GroupEmailProps;

@@ -143,6 +143,12 @@ test("Finnish registration, validation, verification email and list/wish creatio
   expect(mail.Subject).toBe("Vahvista Wishlist-sähköpostisi");
   expect(mail.HTML).toContain('lang="fi"');
   expect(mail.Text).toContain("30 minuutissa");
+  const verificationLink = mail.Text.match(
+    /http:\/\/127\.0\.0\.1:3017\/fi\/email-verification/,
+  )?.[0];
+  expect(verificationLink).toBeTruthy();
+  await page.goto(verificationLink!);
+  await expect(page).toHaveURL(/\/fi\/email-verification$/);
   const code = mail.Text.match(/^\s*([A-Z]{8})\s*$/m)?.[1];
   expect(code).toBeTruthy();
   await page.getByLabel("Vahvistuskoodi", { exact: true }).fill(code!);

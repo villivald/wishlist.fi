@@ -41,7 +41,11 @@ export default function PremiumEmail({
       title={t(
         promo ? "Your Premium access has been updated" : "Welcome to Premium",
       )}
-      preview={t("Your Premium dates, tools, and subscription settings.")}
+      preview={t(
+        promo
+          ? "Your Premium dates and tools. Promo access does not renew automatically."
+          : "Your Premium dates, tools, and subscription settings.",
+      )}
     >
       <EmailParagraph>
         {t("Hi {name}, thank you for choosing Wishlist Premium.", {

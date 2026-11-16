@@ -1,6 +1,14 @@
 import { Text } from "react-email";
 import { createText } from "@/i18n/text";
-import { EmailLayout, EmailNote, EmailParagraph } from "../components/layout";
+import { emailVerificationPath } from "@/paths";
+import {
+  EmailAction,
+  EmailLayout,
+  EmailLink,
+  EmailNote,
+  EmailParagraph,
+  emailUrl,
+} from "../components/layout";
 
 type EmailVerificationProps = {
   toName: string;
@@ -14,6 +22,7 @@ const EmailVerification = ({
   locale = "en",
 }: EmailVerificationProps) => {
   const t = createText(locale);
+  const url = emailUrl(emailVerificationPath, locale);
   return (
     <EmailLayout
       locale={locale}
@@ -49,6 +58,12 @@ const EmailVerification = ({
       <EmailNote>
         {t("This code expires in 30 minutes. Use only your latest code.")}
       </EmailNote>
+      <EmailAction href={url}>{t("Verify email")}</EmailAction>
+      <EmailParagraph>
+        {t("If the button does not work, open this link:")}
+        <br />
+        <EmailLink href={url}>{url}</EmailLink>
+      </EmailParagraph>
       <EmailParagraph>
         {t(
           "If you did not create a Wishlist account, you can ignore this email.",

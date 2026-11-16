@@ -172,7 +172,11 @@ it.each(["en", "fi"])(
     const plain = await render(invitation, { plainText: true });
     expect(plain).toContain(`@${inviterUsername}`);
     expect(plain).toContain(locale === "fi" ? "Kutsuja:" : "Invited by:");
-    expect(await render(acceptance, { plainText: true })).toContain("@jane");
+    const plainAcceptance = await render(acceptance, { plainText: true });
+    expect(plainAcceptance).toContain("@jane");
+    expect(plainAcceptance).toContain(
+      locale === "fi" ? "Jos painike ei toimi" : "If the button does not work",
+    );
   },
 );
 
@@ -204,6 +208,18 @@ it.each(["en", "fi"])(
     );
     expect(promo).not.toContain(
       locale === "fi" ? "Maksu vahvistettu." : "Payment confirmed.",
+    );
+    const promoHtml = await render(
+      createElement(PremiumEmail, { ...props, source: "promo" }),
+    );
+    const inboxPreview = promoHtml.slice(0, promoHtml.indexOf("<div lang="));
+    expect(inboxPreview).toContain(
+      locale === "fi"
+        ? "Etukoodin käyttöaika ei uusiudu automaattisesti."
+        : "Promo access does not renew automatically.",
+    );
+    expect(inboxPreview).not.toContain(
+      locale === "fi" ? "tilausasetuksesi" : "subscription settings",
     );
     expect(paid).toContain(
       locale === "fi" ? "Maksu vahvistettu." : "Payment confirmed.",
@@ -267,13 +283,29 @@ it.each(["en", "fi"])(
   },
 );
 
-it("renders verification codes", async () => {
-  const html = await render(
-    createElement(EmailVerification, { toName: "Demo", code: "ABCDEFGH" }),
-  );
+it.each(["en", "fi"])(
+  "links back to the %s verification form without putting the code in the URL",
+  async (locale) => {
+    vi.stubEnv("APP_URL", "https://wishlist.example");
+    const html = await render(
+      createElement(EmailVerification, {
+        toName: "Demo",
+        code: "ABCDEFGH",
+        locale,
+      }),
+    );
 
-  expect(html).toContain("ABCDEFGH");
-});
+    expect(html).toContain("ABCDEFGH");
+    expect(html).toContain(
+      `href="https://wishlist.example/${locale}/email-verification"`,
+    );
+    const links = Array.from(
+      html.matchAll(/href="([^"]+)"/g),
+      (match) => match[1],
+    );
+    expect(links.every((href) => !href.includes("ABCDEFGH"))).toBe(true);
+  },
+);
 it("renders password recovery links", async () => {
   const html = await render(
     createElement(EmailPasswordReset, {

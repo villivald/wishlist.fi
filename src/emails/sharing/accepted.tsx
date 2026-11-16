@@ -1,5 +1,10 @@
 import { createText } from "@/i18n/text";
-import { EmailAction, EmailLayout, EmailParagraph } from "../components/layout";
+import {
+  EmailAction,
+  EmailLayout,
+  EmailLink,
+  EmailParagraph,
+} from "../components/layout";
 
 export default function InvitationAcceptedEmail({
   username,
@@ -33,6 +38,11 @@ export default function InvitationAcceptedEmail({
         )}
       </EmailParagraph>
       <EmailAction href={url}>{t("Manage list members")}</EmailAction>
+      <EmailParagraph>
+        {t("If the button does not work, open this link:")}
+        <br />
+        <EmailLink href={url}>{url}</EmailLink>
+      </EmailParagraph>
     </EmailLayout>
   );
 }

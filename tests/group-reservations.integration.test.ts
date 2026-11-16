@@ -560,6 +560,7 @@ describe("group email notifications", () => {
     expect(invitation.html).toContain('lang="fi"');
     expect(invitation.html).toContain(`/fi/reservations/${id}`);
     expect(invitation.text).toContain(organizer);
+    expect(invitation.text).toContain(`@${organizer}`);
     expect(invitation.text).not.toContain("Together gift");
     expect(inngest.send).toHaveBeenCalledWith([
       {
@@ -589,6 +590,7 @@ describe("group email notifications", () => {
       recipient: accounts.member.email,
     });
     expect(accepted.text).toContain(`Name ${guest}`);
+    expect(accepted.text).toContain(`Name ${guest} (@${guest})`);
     expect(accepted.html).toContain(`/en/reservations/${id}`);
     expect(accepted.text).not.toContain("Together gift");
     expect(inngest.send).toHaveBeenCalledWith([
