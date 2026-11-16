@@ -18,11 +18,18 @@ import { PremiumBadge } from "@/features/premium/components/premium-badge";
 import { ThemePicker } from "@/features/premium/components/theme-picker";
 import { Link } from "@/i18n/navigation";
 import { getText } from "@/i18n/server";
+import { getCanonicalUrl } from "@/lib/search-indexing";
 import { accountPlanPath, emailVerificationPath, signUpPath } from "@/paths";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getText();
-  return { title: t("Free and Premium") };
+  const [t, locale] = await Promise.all([getText(), getLocale()]);
+  return {
+    title: t("Free and Premium"),
+    description: t(
+      "Choose an illustrated theme, download a QR sharing card, and decide who can see your lists.",
+    ),
+    alternates: { canonical: getCanonicalUrl("/premium", locale) },
+  };
 }
 
 export default async function PremiumPage() {

@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { getLocale } from "next-intl/server";
 import { randomInt } from "node:crypto";
 import { HomeHeroArt } from "@/components/home/home-hero-art";
 import { homeHeroArtworks } from "@/components/home/home-hero-artworks";
@@ -6,6 +8,7 @@ import styles from "@/components/shell.module.css";
 import { getAuth } from "@/features/auth/actions/get-auth";
 import { Link } from "@/i18n/navigation";
 import { getText } from "@/i18n/server";
+import { getCanonicalUrl } from "@/lib/search-indexing";
 import {
   browsePath,
   emailVerificationPath,
@@ -13,6 +16,17 @@ import {
   newListPath,
   signUpPath,
 } from "@/paths";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const [t, locale] = await Promise.all([getText(), getLocale()]);
+  return {
+    title: t("Create and share your wishlist"),
+    description: t(
+      "Collect the things you love, share a list with your people, and make finding the right gift a little easier.",
+    ),
+    alternates: { canonical: getCanonicalUrl("/", locale) },
+  };
+}
 
 export default async function HomePage() {
   const t = await getText();

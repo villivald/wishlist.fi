@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getLocale } from "next-intl/server";
 import { AccountForm } from "@/components/account-form";
 import { AccountPanel } from "@/components/account-panel";
 import {
@@ -9,12 +10,14 @@ import { googleConfig } from "@/features/auth/service/google";
 import { authReturnPath, safeReturnTo } from "@/features/auth/utils/return-to";
 import { Link } from "@/i18n/navigation";
 import { getText } from "@/i18n/server";
-import { signInPath } from "@/paths";
+import { getCanonicalUrl } from "@/lib/search-indexing";
+import { signInPath, signUpPath } from "@/paths";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getText();
+  const [t, locale] = await Promise.all([getText(), getLocale()]);
   return {
     title: t("Create account"),
+    alternates: { canonical: getCanonicalUrl(signUpPath, locale) },
   };
 }
 
