@@ -5,10 +5,12 @@ export default function InvitationAcceptedEmail({
   username,
   url,
   locale = "en",
+  listTitle,
 }: {
   username: string;
   url: string;
   locale?: string;
+  listTitle: string;
 }) {
   const t = createText(locale);
   return (
@@ -21,6 +23,9 @@ export default function InvitationAcceptedEmail({
         {t("{username} accepted your list invitation.", {
           username: `@${username}`,
         })}
+      </EmailParagraph>
+      <EmailParagraph>
+        <strong>{t("List")}:</strong> {listTitle}
       </EmailParagraph>
       <EmailParagraph>
         {t(
@@ -36,4 +41,5 @@ InvitationAcceptedEmail.PreviewProps = {
   username: "alex",
   url: "https://wishlist.fi/en/lists/example/sharing",
   locale: "en",
+  listTitle: "Birthday wishes",
 };

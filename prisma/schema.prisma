@@ -184,26 +184,28 @@ model GuestLink {
 
 // The ID locates an invitation; only its verified intended email can accept it.
 model Invitation {
-  id               String         @id @default(cuid())
-  createdAt        DateTime       @default(now())
-  expiresAt        DateTime
-  email            String         @db.VarChar(254)
-  locale           String         @default("en") @db.VarChar(2)
-  role             MembershipRole
-  acceptedAt       DateTime?
-  revokedAt        DateTime?
-  wishlistId       String
-  inviterId        String
-  recipientId      String?
-  wishlist         Wishlist       @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
-  inviter          User           @relation("InvitationSender", fields: [inviterId], references: [id], onDelete: Cascade)
-  recipient        User?          @relation("InvitationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
-  sentAt           DateTime?
-  firstAttemptAt   DateTime?
-  nextAttemptAt    DateTime       @default(now())
-  deliveryAttempts Int            @default(0)
-  deliveryFailedAt DateTime?
-  claimId          String?
+  id                   String         @id @default(cuid())
+  createdAt            DateTime       @default(now())
+  expiresAt            DateTime
+  email                String         @db.VarChar(254)
+  locale               String         @default("en") @db.VarChar(2)
+  role                 MembershipRole
+  acceptedAt           DateTime?
+  revokedAt            DateTime?
+  wishlistId           String
+  inviterId            String
+  recipientId          String?
+  emailListTitle       String?        @db.VarChar(200)
+  emailInviterUsername String?        @db.VarChar(40)
+  wishlist             Wishlist       @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
+  inviter              User           @relation("InvitationSender", fields: [inviterId], references: [id], onDelete: Cascade)
+  recipient            User?          @relation("InvitationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  sentAt               DateTime?
+  firstAttemptAt       DateTime?
+  nextAttemptAt        DateTime       @default(now())
+  deliveryAttempts     Int            @default(0)
+  deliveryFailedAt     DateTime?
+  claimId              String?
 
   @@index([wishlistId, createdAt])
   @@index([inviterId])

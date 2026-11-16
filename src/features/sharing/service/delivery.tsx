@@ -122,12 +122,19 @@ export const deliverInvitations = async (id?: string) => {
       },
     });
     if (!ready.count) continue;
+    // Null snapshots identify legacy invitations; keep their original payload
+    // for retries using an existing provider idempotency key.
+    const subject = createText(invitation.locale)("Your Wishlist invitation");
     try {
       await deliverEmail(
         invitation.email,
-        createText(invitation.locale)("Your Wishlist invitation"),
+        invitation.emailListTitle === null
+          ? subject
+          : `${subject}: ${invitation.emailListTitle.replace(/[\r\n]+/g, " ")}`,
         <InvitationEmail
           locale={invitation.locale}
+          listTitle={invitation.emailListTitle ?? undefined}
+          inviterUsername={invitation.emailInviterUsername ?? undefined}
           url={`${getBaseUrl()}${localizedPath(invitationPath(invitation.id), invitation.locale)}`}
         />,
         `wishlist-invitation/${invitation.id}`,

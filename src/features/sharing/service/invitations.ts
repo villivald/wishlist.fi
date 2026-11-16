@@ -39,7 +39,12 @@ export const inviteMember = async (
       : invitationSchema.parse(input);
   await consumeRateLimit("invite-create", userId, 20, 60 * 60 * 1000);
   return prisma.$transaction(async (tx) => {
-    const { list, role } = await lockSharing(tx, userId, sessionId, listId);
+    const { user, list, role } = await lockSharing(
+      tx,
+      userId,
+      sessionId,
+      listId,
+    );
     requireAdmin(role);
     await requirePremium(list.ownerId!, tx);
     const favorite =
@@ -109,6 +114,8 @@ export const inviteMember = async (
         locale: recipient?.locale ?? locale,
         wishlistId: listId,
         inviterId: userId,
+        emailListTitle: list.title,
+        emailInviterUsername: user.username,
         expiresAt: new Date(Date.now() + 7 * 86400000),
       },
       select: { id: true },
@@ -228,7 +235,11 @@ export const acceptInvitation = async (
       where: { id: invitationId },
       data: { acceptedAt: new Date() },
     });
-    const emailId = await queueInvitationAcceptedEmail(tx, invitation, userId);
+    const emailId = await queueInvitationAcceptedEmail(
+      tx,
+      { ...invitation, listTitle: list.title },
+      userId,
+    );
     return { listId: list.id, emailId };
   });
   await publishBackgroundEvents(backgroundEvents.accountEmail, [

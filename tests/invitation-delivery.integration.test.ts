@@ -90,9 +90,16 @@ describe("durable invitation delivery", () => {
     expect(results.reduce((sum, result) => sum + result.sent, 0)).toBe(1);
     expect(send).toHaveBeenCalledTimes(1);
     expect(send.mock.calls[0][3]).toBe(`wishlist-invitation/${id}`);
-    expect(JSON.stringify(send.mock.calls)).not.toContain(
+    expect(JSON.stringify(send.mock.calls)).toContain(
       "Another person's private list",
     );
+    expect(send.mock.calls[0][1]).toBe(
+      "Your Wishlist invitation: Another person's private list",
+    );
+    expect(send.mock.calls[0][2].props).toMatchObject({
+      listTitle: "Another person's private list",
+      inviterUsername: "e2e-member",
+    });
     expect(JSON.stringify(send.mock.calls)).not.toContain("Private wish");
     await deliverInvitations(id);
     expect(send).toHaveBeenCalledTimes(1);
@@ -196,7 +203,7 @@ describe("durable invitation delivery", () => {
   });
 });
 
-it("freezes recipient language for invitation retries and uses sender language for unknown recipients", async () => {
+it("freezes language, list title and inviter for retries and uses sender language for unknown recipients", async () => {
   await revokeInvitation(
     account.user.id,
     account.session.id,
@@ -229,7 +236,23 @@ it("freezes recipient language for invitation retries and uses sender language f
     .spyOn(mail, "deliverEmail")
     .mockRejectedValueOnce(new Error("temporary outage"))
     .mockResolvedValue({ error: null });
+  await prisma.wishlist.update({
+    where: { id: "e2e-private-list" },
+    data: { title: "Renamed before first delivery" },
+  });
+  await prisma.user.update({
+    where: { id: account.user.id },
+    data: { username: "renamed-before-delivery" },
+  });
   expect(await deliverInvitations(existing.id)).toEqual({ sent: 0, failed: 1 });
+  await prisma.wishlist.update({
+    where: { id: "e2e-private-list" },
+    data: { title: "Renamed before retry" },
+  });
+  await prisma.user.update({
+    where: { id: account.user.id },
+    data: { username: "renamed-before-retry" },
+  });
   await prisma.invitation.update({
     where: { id: existing.id },
     data: { nextAttemptAt: new Date(0) },
@@ -237,10 +260,14 @@ it("freezes recipient language for invitation retries and uses sender language f
   await deliverInvitations(existing.id);
   await deliverInvitations(unknown.id);
   expect(send.mock.calls.map((call) => call[1])).toEqual([
-    "Kutsusi Wishlistiin",
-    "Kutsusi Wishlistiin",
-    "Kutsusi Wishlistiin",
+    "Kutsusi Wishlistiin: Another person's private list",
+    "Kutsusi Wishlistiin: Another person's private list",
+    "Kutsusi Wishlistiin: Another person's private list",
   ]);
+  expect(send.mock.calls[0][2].props).toMatchObject({
+    listTitle: "Another person's private list",
+    inviterUsername: "e2e-member",
+  });
   expect(send.mock.calls[0][2]).toEqual(send.mock.calls[1][2]);
   expect(JSON.stringify(send.mock.calls[1][2])).toContain(
     `/fi/invitations/${existing.id}`,
@@ -249,6 +276,28 @@ it("freezes recipient language for invitation retries and uses sender language f
     (await prisma.invitation.findUniqueOrThrow({ where: { id: unknown.id } }))
       .locale,
   ).toBe("fi");
+});
+
+it("keeps legacy invitation payloads unchanged when retrying after migration", async () => {
+  await prisma.invitation.update({
+    where: { id },
+    data: {
+      emailListTitle: null,
+      emailInviterUsername: null,
+      deliveryAttempts: 1,
+      firstAttemptAt: new Date(),
+    },
+  });
+  const send = vi
+    .spyOn(mail, "deliverEmail")
+    .mockResolvedValue({ error: null });
+  expect(await deliverInvitations(id)).toEqual({ sent: 1, failed: 0 });
+  expect(send.mock.calls[0][1]).toBe("Your Wishlist invitation");
+  expect(send.mock.calls[0][2].props).toMatchObject({
+    listTitle: undefined,
+    inviterUsername: undefined,
+  });
+  expect(send.mock.calls[0][3]).toBe(`wishlist-invitation/${id}`);
 });
 
 it("queues acceptance in the inviter language, delivers once and rejects replay", async () => {
@@ -266,10 +315,11 @@ it("queues acceptance in the inviter language, delivers once and rejects replay"
   });
   expect(email).toMatchObject({
     recipient: accounts.member.email,
-    subject: "Kutsusi listalle hyväksyttiin",
+    subject: "Kutsusi listalle hyväksyttiin: Another person's private list",
     sentAt: null,
   });
   expect(email.html).toContain("@e2e-owner");
+  expect(email.text).toContain("Another person's private list");
   expect(email.html).toContain("/fi/lists/e2e-private-list/sharing");
   await expect(
     acceptInvitation(recipient.user.id, recipient.session.id, id),
@@ -334,10 +384,11 @@ it.each(["en", "fi"])(
     ).json();
     expect(message.Subject).toBe(
       locale === "fi"
-        ? "Kutsusi listalle hyväksyttiin"
-        : "Your list invitation was accepted",
+        ? "Kutsusi listalle hyväksyttiin: Another person's private list"
+        : "Your list invitation was accepted: Another person's private list",
     );
     expect(message.Text).toContain("@e2e-owner");
+    expect(message.Text).toContain("Another person's private list");
     expect(message.Text).toContain(`/${locale}/lists/e2e-private-list/sharing`);
   },
 );

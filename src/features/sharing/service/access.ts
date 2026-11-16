@@ -20,7 +20,7 @@ export const lockSharing = async (
       emailVerified: true,
       sessions: { some: { id: sessionId, expiresAt: { gt: new Date() } } },
     },
-    select: { id: true, email: true },
+    select: { id: true, email: true, username: true },
   });
   if (!user) {
     throw new AuthError("Your session expired. Please sign in again.");
@@ -30,6 +30,7 @@ export const lockSharing = async (
     where: { id: listId, archivedAt: null },
     select: {
       id: true,
+      title: true,
       ownerId: true,
       visibility: true,
       memberships: { where: { userId }, select: { role: true } },

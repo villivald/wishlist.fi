@@ -42,10 +42,13 @@ it.each(["en", "fi"])(
       }),
       createElement(InvitationAcceptedEmail, {
         username: "<script>private name</script>",
+        listTitle: "Birthday wishes",
         locale,
         url: `https://wishlist.example/${locale}/lists/example/sharing`,
       }),
       createElement(InvitationEmail, {
+        listTitle: "Birthday wishes",
+        inviterUsername: "alex",
         locale,
         url: `https://wishlist.example/${locale}/invitations/example`,
       }),
@@ -96,6 +99,40 @@ it.each(["en", "fi"])(
     const plainWelcome = await render(emails[0], { plainText: true });
     expect(plainWelcome).toContain(communityLinks.instagram);
     expect(plainWelcome).toContain(communityLinks.facebook);
+  },
+);
+
+it.each(["en", "fi"])(
+  "identifies the list and inviter in %s sharing emails and escapes user content",
+  async (locale) => {
+    const listTitle = "<script>Birthday & Christmas</script>";
+    const inviterUsername = "<script>alex</script>";
+    const invitation = createElement(InvitationEmail, {
+      locale,
+      listTitle,
+      inviterUsername,
+      url: `https://wishlist.example/${locale}/invitations/example`,
+    });
+    const acceptance = createElement(InvitationAcceptedEmail, {
+      locale,
+      listTitle,
+      username: "jane",
+      url: `https://wishlist.example/${locale}/lists/example/sharing`,
+    });
+    for (const email of [invitation, acceptance]) {
+      const html = await render(email);
+      const plain = await render(email, { plainText: true });
+      expect(html).not.toContain("<script>");
+      expect(html).toContain(
+        "&lt;script&gt;Birthday &amp; Christmas&lt;/script&gt;",
+      );
+      expect(plain).toContain(listTitle);
+      expect(plain).toContain(locale === "fi" ? "Lista:" : "List:");
+    }
+    const plain = await render(invitation, { plainText: true });
+    expect(plain).toContain(`@${inviterUsername}`);
+    expect(plain).toContain(locale === "fi" ? "Kutsuja:" : "Invited by:");
+    expect(await render(acceptance, { plainText: true })).toContain("@jane");
   },
 );
 

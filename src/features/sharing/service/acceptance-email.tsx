@@ -15,6 +15,7 @@ export async function queueInvitationAcceptedEmail(
     id: string;
     inviterId: string;
     wishlistId: string;
+    listTitle: string;
   },
   userId: string,
 ) {
@@ -30,6 +31,7 @@ export async function queueInvitationAcceptedEmail(
   const email = (
     <InvitationAcceptedEmail
       username={actor.username}
+      listTitle={invitation.listTitle}
       locale={recipient.locale}
       url={emailUrl(sharingPath(invitation.wishlistId), recipient.locale)}
     />
@@ -40,7 +42,7 @@ export async function queueInvitationAcceptedEmail(
       userId: invitation.inviterId,
       recipient: recipient.email,
       sender: emailSender(),
-      subject: t("Your list invitation was accepted"),
+      subject: `${t("Your list invitation was accepted")}: ${invitation.listTitle.replace(/[\r\n]+/g, " ")}`,
       html: await render(email),
       text: await render(email, { plainText: true }),
     },

@@ -393,7 +393,11 @@ test("Finnish invitations use the recipient's saved language and keep the accept
     .click();
   await expect(page.getByRole("status")).toContainText("Invitation created");
   const mail = await latestMail();
-  expect(mail.Subject).toBe("Kutsusi Wishlistiin");
+  expect(mail.Subject).toBe(
+    "Kutsusi Wishlistiin: Another person's private list",
+  );
+  expect(mail.Text).toContain("Lista: Another person's private list");
+  expect(mail.Text).toContain("Kutsuja: @e2e-member");
   const link = mail.Text.match(
     /http:\/\/127\.0\.0\.1:3017\/fi\/invitations\/[a-z0-9]+/,
   )?.[0];

@@ -11,9 +11,13 @@ import {
 export default function InvitationEmail({
   url,
   locale = "en",
+  listTitle,
+  inviterUsername,
 }: {
   url: string;
   locale?: string;
+  listTitle?: string;
+  inviterUsername?: string;
 }) {
   const t = createText(locale);
   return (
@@ -25,6 +29,17 @@ export default function InvitationEmail({
       <EmailParagraph>
         {t("You have been invited to a list on Wishlist.")}
       </EmailParagraph>
+      {listTitle !== undefined && (
+        <EmailParagraph>
+          <strong>{t("List")}:</strong> {listTitle}
+          {inviterUsername !== undefined && (
+            <>
+              <br />
+              <strong>{t("Invited by")}:</strong> @{inviterUsername}
+            </>
+          )}
+        </EmailParagraph>
+      )}
       <EmailList
         ordered
         items={[
@@ -57,4 +72,6 @@ export default function InvitationEmail({
 InvitationEmail.PreviewProps = {
   url: "http://localhost:3000/en/invitations/example-token",
   locale: "en",
+  listTitle: "Birthday wishes",
+  inviterUsername: "alex",
 };
