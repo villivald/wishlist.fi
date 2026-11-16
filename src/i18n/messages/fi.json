@@ -1223,5 +1223,8 @@
   "Your cookie choices are saved for 180 days. Change or withdraw permission in Cookie settings in the footer. Browser Do Not Track and Global Privacy Control signals block optional tracking.": "Evästevalintasi tallennetaan 180 päiväksi. Voit muuttaa valintaa tai perua luvan alatunnisteen evästeasetuksissa. Selaimen Do Not Track- ja Global Privacy Control -asetukset estävät valinnaisen seurannan.",
   "May we use optional analytics to measure site usage and performance? You can change your choice in Cookie settings.": "Saammeko käyttää valinnaista analytiikkaa sivuston käytön ja suorituskyvyn mittaamiseen? Voit muuttaa valintaasi evästeasetuksissa.",
   "Give your list a name, then add your first wish. A title is enough to start.": "Anna listallesi nimi ja lisää ensimmäinen toive. Pelkkä otsikko riittää alkuun.",
-  "See how Wishlist works": "Katso, miten Wishlist toimii"
+  "See how Wishlist works": "Katso, miten Wishlist toimii",
+  "Your wish was reserved": "Toiveesi on varattu",
+  "A wish on your list has been reserved.": "Listallasi oleva toive on varattu.",
+  "The reserver's identity stays private.": "Varaajan henkilöllisyys pysyy salassa."
 }

@@ -71,6 +71,50 @@ test.beforeEach(async () => {
   }
 });
 
+for (const locale of ["en", "fi"]) {
+  test(`${locale} reservation notification links to the owner's wish without revealing the reserver`, async ({
+    page,
+    browser,
+  }) => {
+    const prisma = testPrisma();
+    const owner = await browser.newPage({ baseURL: testOrigin });
+    try {
+      await prisma.user.update({
+        where: { id: "e2e-owner" },
+        data: { locale },
+      });
+      await signIn(page);
+      await reserve(page);
+      const email = await prisma.accountEmail.findFirstOrThrow({
+        where: { userId: "e2e-owner", key: { startsWith: "wish-reserved/" } },
+      });
+      const url = `${testOrigin}/${locale}/lists/e2e-reservation-list/wishes/e2e-reservation-wish`;
+      expect(email.recipient).toBe(accounts.owner.email);
+      expect(email.text).toContain(url);
+      expect(email.text).not.toContain(accounts.member.email);
+      expect(email.html).not.toContain("e2e-member");
+      await signIn(owner, accounts.owner);
+      await owner.goto(url);
+      await expect(
+        owner.getByRole("heading", {
+          name: "A beautiful notebook",
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(owner.getByRole("main")).toContainText(
+        locale === "fi" ? "Varattu" : "Reserved",
+      );
+      await expect(owner.getByRole("main")).not.toContainText("e2e-member");
+      await expect(owner.getByRole("main")).not.toContainText(
+        accounts.member.email,
+      );
+    } finally {
+      await owner.close();
+      await prisma.$disconnect();
+    }
+  });
+}
+
 test("reserve, view, cancel and admin revoke preserve identity and image privacy", async ({
   page,
   browser,

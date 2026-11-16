@@ -106,6 +106,11 @@ beforeEach(async () => {
   await membership(guest);
   await membership(second);
   ({ id } = await reserveWish(organizer, listId, wishId, true));
+  // Owner mail is covered separately; this fixture isolates group notifications.
+  await prisma.accountEmail.deleteMany({
+    where: { key: `wish-reserved/${id}` },
+  });
+  vi.mocked(inngest.send).mockClear();
 });
 afterEach(() => vi.restoreAllMocks());
 afterAll(() => prisma.$disconnect());

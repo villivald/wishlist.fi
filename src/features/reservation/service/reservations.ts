@@ -5,8 +5,13 @@ import { lockManagedWishlist } from "@/features/wishlist/service/lists";
 import { lockWishlist } from "@/features/wishlist/service/lock";
 import { wishlistIdSchema } from "@/features/wishlist/service/schemas";
 import { Prisma } from "@/generated/prisma/client";
+import {
+  backgroundEvents,
+  publishBackgroundEvents,
+} from "@/lib/background-events";
 import { prisma } from "@/lib/prisma";
 import { participantReservation } from "./access";
+import { queueWishReservedEmail } from "./owner-emails";
 
 export class ReservationError extends Error {}
 
@@ -44,7 +49,9 @@ export const reserveWish = async (
   await limitChanges(userId);
 
   try {
-    return await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
+      // Queueing mail for the owner shares the cross-account deletion gate.
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock_shared(8108, 1)::text`;
       await verifyActor(tx, userId);
       await lockWishlist(tx, listId);
 
@@ -70,11 +77,21 @@ export const reserveWish = async (
         );
       }
 
-      return tx.reservation.create({
+      const reservation = await tx.reservation.create({
         data: { userId, wishId: wish.id, groupEnabled },
         select: { id: true },
       });
+      const emailId = await queueWishReservedEmail(tx, {
+        ...reservation,
+        wishId: wish.id,
+        userId,
+      });
+      return { id: reservation.id, emailId };
     });
+    await publishBackgroundEvents(backgroundEvents.accountEmail, [
+      result.emailId,
+    ]);
+    return { id: result.id };
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&

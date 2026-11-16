@@ -1223,5 +1223,8 @@
   "Your cookie choices are saved for 180 days. Change or withdraw permission in Cookie settings in the footer. Browser Do Not Track and Global Privacy Control signals block optional tracking.": "Your cookie choices are saved for 180 days. Change or withdraw permission in Cookie settings in the footer. Browser Do Not Track and Global Privacy Control signals block optional tracking.",
   "May we use optional analytics to measure site usage and performance? You can change your choice in Cookie settings.": "May we use optional analytics to measure site usage and performance? You can change your choice in Cookie settings.",
   "Give your list a name, then add your first wish. A title is enough to start.": "Give your list a name, then add your first wish. A title is enough to start.",
-  "See how Wishlist works": "See how Wishlist works"
+  "See how Wishlist works": "See how Wishlist works",
+  "Your wish was reserved": "Your wish was reserved",
+  "A wish on your list has been reserved.": "A wish on your list has been reserved.",
+  "The reserver's identity stays private.": "The reserver's identity stays private."
 }

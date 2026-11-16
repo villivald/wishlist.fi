@@ -1,5 +1,6 @@
 import { premiumGrantEnvironmentWhere } from "@/features/premium/service/entitlements";
 import { isGroupEmailCurrent } from "@/features/reservation/service/group-emails";
+import { isWishReservedEmailCurrent } from "@/features/reservation/service/owner-emails";
 import { isInvitationAcceptanceEmailCurrent } from "@/features/sharing/service/acceptance-email";
 import { deliverRenderedEmail } from "@/lib/mail";
 import { prisma } from "@/lib/prisma";
@@ -51,6 +52,7 @@ export const deliverAccountEmails = async (id?: string) => {
       email.user.email !== email.recipient ||
       !eligibleGrant ||
       !(await isGroupEmailCurrent(email)) ||
+      !(await isWishReservedEmailCurrent(email)) ||
       !(await isInvitationAcceptanceEmailCurrent(email))
     ) {
       await prisma.accountEmail.updateMany({

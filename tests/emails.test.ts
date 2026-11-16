@@ -6,11 +6,45 @@ import WelcomeEmail from "@/emails/account/welcome";
 import EmailVerification from "@/emails/auth/email-verification";
 import EmailPasswordReset from "@/emails/password/email-password-reset";
 import GroupEmail from "@/emails/reservation/group";
+import WishReservedEmail from "@/emails/reservation/wish-reserved";
 import InvitationAcceptedEmail from "@/emails/sharing/accepted";
 import InvitationEmail from "@/emails/sharing/invitation";
 import { communityLinks } from "@/lib/community-links";
 
 afterEach(() => vi.unstubAllEnvs());
+
+it.each(["en", "fi"])(
+  "renders a private %s reservation notice with escaped titles and an ordinary wish link",
+  async (locale) => {
+    const wishTitle = "<script>Notebook & pen</script>";
+    const listTitle = "<img>Birthday wishes</img>";
+    const url = `https://wishlist.example/${locale}/lists/example/wishes/example-wish`;
+    const email = createElement(WishReservedEmail, {
+      locale,
+      wishTitle,
+      listTitle,
+      url,
+    });
+    const html = await render(email);
+    const plain = await render(email, { plainText: true });
+    expect(html).not.toContain("<script>");
+    expect(html).toContain("&lt;script&gt;Notebook &amp; pen&lt;/script&gt;");
+    expect(html).toContain("&lt;img&gt;Birthday wishes&lt;/img&gt;");
+    expect(html).toContain(`href="${url}"`);
+    expect(plain).toContain(wishTitle);
+    expect(plain).toContain(listTitle);
+    expect(plain).toContain(
+      locale === "fi"
+        ? "Varaajan henkilöllisyys pysyy salassa."
+        : "The reserver's identity stays private.",
+    );
+    expect(plain).not.toContain("/reservations/");
+    // Titles belong in the body, below the generic inbox preview.
+    expect(html.indexOf("&lt;script&gt;")).toBeGreaterThan(
+      html.indexOf("</h1>"),
+    );
+  },
+);
 
 it.each(["en", "fi"])(
   "renders all %s emails with the shared brand, usable links, and a plain-text alternative",
@@ -51,6 +85,12 @@ it.each(["en", "fi"])(
         inviterUsername: "alex",
         locale,
         url: `https://wishlist.example/${locale}/invitations/example`,
+      }),
+      createElement(WishReservedEmail, {
+        locale,
+        wishTitle: "<script>Notebook & pen</script>",
+        listTitle: "Birthday wishes",
+        url: `https://wishlist.example/${locale}/lists/example/wishes/example-wish`,
       }),
       ...(["INVITED", "ACCEPTED"] as const).map((kind) =>
         createElement(GroupEmail, {
