@@ -24,9 +24,10 @@ const start = async (page: Page) => {
     page.getByRole("button", { name: "Start group reservation", exact: true }),
   ).toBeDisabled();
   await page
-    .getByLabel(
-      "Share my name and username with invitees and people who join this group.",
-    )
+    .getByRole("checkbox", {
+      name: "Share my name and username with invitees and people who join this group.",
+      exact: true,
+    })
     .check();
   await page
     .getByRole("button", { name: "Start group reservation", exact: true })

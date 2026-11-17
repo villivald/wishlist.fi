@@ -1,5 +1,4 @@
 import { defineConfig } from "@playwright/test";
-import { testEnvironment } from "./e2e/environment";
 import { livePaddleEnvironment } from "./e2e/paddle-fixture";
 import base from "./playwright.config";
 
@@ -14,7 +13,7 @@ export default defineConfig({
   webServer: {
     ...server,
     env: {
-      ...testEnvironment,
+      ...server.env,
       ...livePaddleEnvironment,
       PADDLE_CHECKOUT_TESTER_IDS: "e2e-owner",
     },

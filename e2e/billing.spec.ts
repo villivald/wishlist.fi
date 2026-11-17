@@ -152,11 +152,12 @@ test("checkout return checks Paddle automatically without trusting the return UR
   await billingSettled(page);
   await page.getByRole("combobox", { name: "Language" }).selectOption("fi");
   await expect(page).toHaveURL(/\/fi\/account\/plan/);
+  const main = page.getByRole("main");
   await expect(
-    page.getByText("Automaattinen uusiminen peruttu", { exact: true }),
+    main.getByText("Automaattinen uusiminen peruttu", { exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText(
+    main.getByText(
       "Tilaus ei uusiudu automaattisesti. Jäljellä oleva maksettu käyttöaikasi säilyy.",
       { exact: true },
     ),
@@ -442,12 +443,14 @@ for (const locale of ["en", "fi"] as const) {
         .getByRole("link", { name: t("Request a refund"), exact: true }),
     ).toHaveAttribute("href", "https://paddle.net/");
     await expect(
-      page.getByText(
-        t(
-          "Paddle reviews refund requests. To stop future charges, cancel renewal separately.",
+      page
+        .getByRole("main")
+        .getByText(
+          t(
+            "Paddle reviews refund requests. To stop future charges, cancel renewal separately.",
+          ),
+          { exact: true },
         ),
-        { exact: true },
-      ),
     ).toBeVisible();
 
     await page.emulateMedia({ reducedMotion: "reduce" });

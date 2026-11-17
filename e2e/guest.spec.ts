@@ -315,7 +315,7 @@ test("signed-in owners get the same guest restrictions and cannot replay a write
   await page
     .getByRole("button", { name: "Open Wishlist", exact: true })
     .click();
-  await expect(page).toHaveURL(/\/en\/lists$/);
+  await expect(page).toHaveURL(/\/en$/);
   await openMainNavigation(page);
   await expect(
     page.getByRole("link", { name: "Account", exact: true }),

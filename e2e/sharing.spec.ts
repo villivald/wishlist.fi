@@ -40,8 +40,11 @@ const invite = async (
   await expect(page.getByRole("status")).toContainText("Invitation created");
   await expect(page.getByText("Email sent", { exact: false })).toBeVisible();
   const message = await latestMail();
-  expect(message.Text).not.toContain(title);
-  expect(message.Text).not.toContain("Secret gift");
+  expect(message.Text).toContain(`List: ${title}`);
+  expect(message.Text).toContain("Invited by: @e2e-owner");
+  for (const body of [message.Text, message.HTML]) {
+    expect(body).not.toContain("Secret gift");
+  }
   return message.Text.match(
     /https?:\/\/[^\s]+\/invitations\/[a-zA-Z0-9_-]+/,
   )![0];
