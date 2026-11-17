@@ -1,13 +1,17 @@
 import { lockUser } from "@/features/auth/service/security";
 import { imageSelection } from "@/features/media/types";
 import { requirePremium } from "@/features/premium/service/entitlements";
-import { visibilitySchema } from "@/features/sharing/service/schemas";
 import { wishPreviewSelection } from "@/features/wish/service/preview";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { manageableLists, readableLists } from "./access";
 import { lockWishlist } from "./lock";
-import { publicationSchema, wishlistIdSchema, wishlistSchema } from "./schemas";
+import {
+  createWishlistSchema,
+  publicationSchema,
+  wishlistIdSchema,
+  wishlistSchema,
+} from "./schemas";
 import { readWishCounts } from "./wish-counts";
 
 export class WishlistError extends Error {}
@@ -140,14 +144,8 @@ export const readMyWishlists = async (
 };
 
 export const createWishlist = async (userId: string, input: unknown) => {
-  const data = wishlistSchema.parse(input);
-  const visibility = visibilitySchema
-    .default("PUBLIC")
-    .parse(
-      input && typeof input === "object" && "visibility" in input
-        ? input.visibility
-        : undefined,
-    );
+  const { visibility, publication, ...data } =
+    createWishlistSchema.parse(input);
 
   return prisma.$transaction(async (tx) => {
     await lockUser(tx, userId);
@@ -170,7 +168,7 @@ export const createWishlist = async (userId: string, input: unknown) => {
         ...data,
         description: data.description || null,
         ownerId: user.id,
-        publication: "PUBLISHED",
+        publication,
         visibility,
         memberships: { create: { userId: user.id, role: "ADMIN" } },
       },

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { listThemeIds } from "@/features/premium/themes";
+import { visibilitySchema } from "@/features/sharing/service/schemas";
 
 export const wishlistIdSchema = z
   .string()
@@ -19,3 +20,8 @@ export const wishlistSchema = z.object({
 });
 
 export const publicationSchema = z.enum(["DRAFT", "PUBLISHED"]);
+
+export const createWishlistSchema = wishlistSchema.extend({
+  visibility: visibilitySchema.default("PUBLIC"),
+  publication: publicationSchema.default("PUBLISHED"),
+});

@@ -170,7 +170,6 @@ describe("wishlist management and authorization", () => {
     data.set("title", "  Birthday ideas  ");
     data.set("description", "  A few things I love.  ");
     data.set("ownerId", "e2e-member");
-    data.set("publication", "DRAFT");
 
     await expect(createList(EMPTY_ACTION_STATE, data)).rejects.toThrow(
       "REDIRECT:/en/lists/",
@@ -194,6 +193,42 @@ describe("wishlist management and authorization", () => {
     await expect(createWishlist("e2e-owner", input)).resolves.toHaveProperty(
       "id",
     );
+  });
+
+  it("creates a hidden public list for a Free account through the creation action", async () => {
+    const data = new FormData();
+    data.set("title", "Hidden ideas");
+    data.set("publication", "DRAFT");
+    data.set("visibility", "PUBLIC");
+    await expect(createList(EMPTY_ACTION_STATE, data)).rejects.toThrow(
+      "REDIRECT:/en/lists/",
+    );
+    const list = await prisma.wishlist.findFirstOrThrow({
+      where: { title: "Hidden ideas" },
+      include: { memberships: true },
+    });
+    expect(list).toMatchObject({
+      publication: "DRAFT",
+      visibility: "PUBLIC",
+      ownerId: "e2e-owner",
+      memberships: [
+        expect.objectContaining({ userId: "e2e-owner", role: "ADMIN" }),
+      ],
+    });
+    expect(await readWishlist(list.id, "e2e-member")).toBeNull();
+    expect(await readWishlist(list.id, null)).toBeNull();
+  });
+
+  it("rejects invalid publication states during creation", async () => {
+    const data = new FormData();
+    data.set("title", "Invalid state");
+    data.set("publication", "PRIVATE");
+    expect(await createList(EMPTY_ACTION_STATE, data)).toMatchObject({
+      status: "ERROR",
+    });
+    expect(
+      await prisma.wishlist.count({ where: { title: "Invalid state" } }),
+    ).toBe(0);
   });
 
   it("saves settings in place and keeps ownership and visibility unchanged", async () => {

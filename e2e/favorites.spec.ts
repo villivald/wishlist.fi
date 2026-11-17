@@ -60,6 +60,79 @@ test.beforeEach(async () => {
   }
 });
 
+test("Favorites opens the first available category and respects explicit empty tabs", async ({
+  page,
+}) => {
+  await signIn(page);
+  const db = testPrisma();
+  const selectedCategory = page
+    .getByRole("navigation", { name: "Favorite categories" })
+    .locator('[aria-current="page"]');
+  try {
+    await page.goto("/en/favorites");
+    await expect(selectedCategory).toHaveText("Lists0");
+    await db.favoriteWish.create({ data: { userId: "e2e-member", wishId } });
+    await page.reload();
+    await expect(selectedCategory).toHaveText("Wishes1");
+    await expect(
+      page.getByRole("heading", { name: "Favorite notebook", exact: true }),
+    ).toBeVisible();
+    await db.favoritePerson.create({
+      data: { userId: "e2e-member", personId: "e2e-owner" },
+    });
+    await page.reload();
+    await expect(selectedCategory).toHaveText("Wishes1");
+    await expect(
+      page.getByRole("heading", { name: "Favorite notebook", exact: true }),
+    ).toBeVisible();
+    await db.favoriteWish.deleteMany({ where: { userId: "e2e-member" } });
+    await page.reload();
+    await expect(selectedCategory).toHaveText("People1");
+    await expect(
+      page.getByRole("heading", { name: "Favorite person", exact: true }),
+    ).toBeVisible();
+    await page.goto("/fi/favorites");
+    await expect(
+      page
+        .getByRole("navigation", { name: "Suosikkien luokat" })
+        .locator('[aria-current="page"]'),
+    ).toHaveText("Ihmiset1");
+    await db.favoriteList.create({
+      data: { userId: "e2e-member", wishlistId: listId },
+    });
+    await page.goto("/en/favorites");
+    await expect(selectedCategory).toHaveText("Lists1");
+    await db.wishlist.create({
+      data: {
+        title: "Another public list",
+        ownerId: "e2e-owner",
+        publication: "PUBLISHED",
+        memberships: { create: { userId: "e2e-owner", role: "ADMIN" } },
+      },
+    });
+    await db.wishlist.update({
+      where: { id: listId },
+      data: { publication: "DRAFT" },
+    });
+    await page.reload();
+    await expect(selectedCategory).toHaveText("People1");
+    await selectedCategory
+      .locator("..")
+      .getByRole("link", { name: /^Lists/ })
+      .click();
+    await expect(selectedCategory).toHaveText("Lists0");
+    await expect(
+      page.getByRole("heading", { name: "No favorites yet", exact: true }),
+    ).toBeVisible();
+    await page.reload();
+    await expect(selectedCategory).toHaveText("Lists0");
+    await page.goto("/en/favorites?view=invalid");
+    await expect(selectedCategory).toHaveText("People1");
+  } finally {
+    await db.$disconnect();
+  }
+});
+
 test("one-click favorites persist across lists, wishes, people, and detail navigation", async ({
   page,
 }, info) => {

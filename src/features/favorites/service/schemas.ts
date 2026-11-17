@@ -10,12 +10,20 @@ export const favoriteInput = z.object({
   saved: z.boolean(),
 });
 
-export const parseFavoritesQuery = (query: {
-  view?: string;
-  page?: string;
-}) => ({
+export const parseFavoritesQuery = (
+  query: { view?: string; page?: string },
+  counts = { lists: 0, people: 0, wishes: 0 },
+) => ({
   view:
-    query.view === "wishes" || query.view === "people" ? query.view : "lists",
+    query.view === "lists" || query.view === "wishes" || query.view === "people"
+      ? query.view
+      : counts.lists > 0
+        ? "lists"
+        : counts.wishes > 0
+          ? "wishes"
+          : counts.people > 0
+            ? "people"
+            : "lists",
   page: /^\d{1,4}$/.test(query.page ?? "")
     ? Math.max(1, Math.min(1000, Number(query.page)))
     : 1,

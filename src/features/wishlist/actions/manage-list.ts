@@ -53,6 +53,7 @@ export const createList = async (_state: ActionState, data: FormData) => {
     ({ id } = await createWishlist(user.id, {
       ...listInput(data),
       visibility: data.get("visibility") ?? "PUBLIC",
+      publication: data.get("publication") ?? "PUBLISHED",
     }));
   } catch (error) {
     return actionError(error, data);

@@ -6,6 +6,22 @@ import {
 } from "@/features/favorites/service/schemas";
 
 describe("favorites input boundaries", () => {
+  it.each([
+    [{ lists: 0, people: 0, wishes: 0 }, "lists"],
+    [{ lists: 0, people: 1, wishes: 0 }, "people"],
+    [{ lists: 0, people: 1, wishes: 1 }, "wishes"],
+    [{ lists: 0, people: 0, wishes: 1 }, "wishes"],
+    [{ lists: 1, people: 1, wishes: 1 }, "lists"],
+  ])("opens the first non-empty category for %j", (counts, view) => {
+    expect(parseFavoritesQuery({}, counts).view).toBe(view);
+    expect(parseFavoritesQuery({ view: "invalid" }, counts).view).toBe(view);
+    for (const explicitView of ["lists", "people", "wishes"]) {
+      expect(parseFavoritesQuery({ view: explicitView }, counts).view).toBe(
+        explicitView,
+      );
+    }
+  });
+
   it("requires an explicit desired state and a valid target", () => {
     for (const input of [
       { kind: "guest", targetId: "wish", saved: true },

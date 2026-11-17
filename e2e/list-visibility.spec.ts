@@ -14,6 +14,144 @@ const signIn = async (page: Page) => {
 
 test.beforeEach(resetFixtures);
 
+for (const locale of ["en", "fi"] as const) {
+  test(`${locale}: a new list can start hidden, keeps its choice after validation, and can be published later`, async ({
+    page,
+    browser,
+  }, info) => {
+    await signIn(page);
+    await page.goto(`/${locale}/lists/new`);
+    const hiddenTitle =
+      locale === "fi"
+        ? "Uusi listasi on aluksi piilotettu"
+        : "Your new list starts hidden";
+    const hideLabel = locale === "fi" ? "Piilota lista" : "Hide list";
+    const titleLabel = locale === "fi" ? "Nimi" : "Title";
+    const createLabel = locale === "fi" ? "Luo lista" : "Create list";
+    const notice = page.locator('[id$="-visibility-help"]');
+    const hide = notice.getByRole("button", { name: hideLabel, exact: true });
+    await hide.focus();
+    await page.keyboard.press("Enter");
+    await expect(notice).toContainText(hiddenTitle);
+    const startVisible = notice.getByRole("button", {
+      name: locale === "fi" ? "Näytä lista heti" : "Start visible",
+      exact: true,
+    });
+    await expect(startVisible).toBeFocused();
+    await startVisible.click();
+    await expect(hide).toBeVisible();
+    await hide.click();
+    await page.getByLabel(titleLabel, { exact: true }).fill("   ");
+    await page.getByRole("button", { name: createLabel, exact: true }).click();
+    await expect(page.getByLabel(titleLabel, { exact: true })).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    await expect(notice).toContainText(hiddenTitle);
+    await expect(page.locator('input[name="publication"]')).toHaveValue(
+      "DRAFT",
+    );
+
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    for (const dark of [false, true]) {
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.evaluate((dark) => {
+        document.documentElement.classList.toggle("dark", dark);
+        document.documentElement.style.fontSize = "";
+      }, dark);
+      await notice.screenshot({
+        path: info.outputPath(
+          `creation-${locale}-${dark ? "dark" : "light"}.png`,
+        ),
+      });
+      await page.setViewportSize({ width: 320, height: 800 });
+      await page.evaluate(() => {
+        document.documentElement.style.fontSize = "200%";
+      });
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+      expect(
+        await notice.evaluate(
+          (element) => element.scrollWidth <= element.clientWidth,
+        ),
+      ).toBe(true);
+      await expect(startVisible).toBeVisible();
+      await notice.screenshot({
+        path: info.outputPath(
+          `creation-${locale}-${dark ? "dark" : "light"}-320.png`,
+        ),
+      });
+      await startVisible.click();
+      expect(
+        await notice.evaluate(
+          (element) => element.scrollWidth <= element.clientWidth,
+        ),
+      ).toBe(true);
+      await notice.screenshot({
+        path: info.outputPath(
+          `creation-visible-${locale}-${dark ? "dark" : "light"}-320.png`,
+        ),
+      });
+      await hide.click();
+    }
+    expect(
+      (await new AxeBuilder({ page }).include("main").analyze()).violations,
+    ).toEqual([]);
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = "";
+    });
+    await page
+      .getByLabel(titleLabel, { exact: true })
+      .fill("Hidden from the start");
+    await page.getByRole("button", { name: createLabel, exact: true }).click();
+    await expect(
+      page.getByRole("heading", { name: "Hidden from the start", exact: true }),
+    ).toBeVisible();
+    const publishLabel = locale === "fi" ? "Julkaise lista" : "Publish list";
+    await expect(
+      page.getByRole("button", { name: publishLabel, exact: true }),
+    ).toBeVisible();
+    const db = testPrisma();
+    try {
+      const id = new URL(page.url()).pathname.split("/").at(-1)!;
+      expect(
+        await db.wishlist.findUniqueOrThrow({ where: { id } }),
+      ).toMatchObject({ publication: "DRAFT", visibility: "PUBLIC" });
+    } finally {
+      await db.$disconnect();
+    }
+    const visitor = await browser.newPage();
+    try {
+      await visitor.goto(page.url());
+      await expect(
+        visitor.getByRole("heading", {
+          name: "Hidden from the start",
+          exact: true,
+        }),
+      ).toHaveCount(0);
+      await page.reload();
+      await page
+        .getByRole("button", { name: publishLabel, exact: true })
+        .click();
+      await expect(
+        page.getByRole("button", { name: hideLabel, exact: true }),
+      ).toBeVisible();
+      await visitor.reload();
+      await expect(
+        visitor.getByRole("heading", {
+          name: "Hidden from the start",
+          exact: true,
+        }),
+      ).toBeVisible();
+    } finally {
+      await visitor.close();
+    }
+  });
+}
+
 test("new lists explain their visible state and can be hidden from the list page", async ({
   page,
   browser,

@@ -8,6 +8,7 @@ import {
   readFavoriteCounts,
   readFavorites,
 } from "@/features/favorites/service/favorites";
+import { parseFavoritesQuery } from "@/features/favorites/service/schemas";
 import { Link } from "@/i18n/navigation";
 import { getText } from "@/i18n/server";
 import { favoritesPath } from "@/paths";
@@ -25,10 +26,17 @@ export default async function FavoritesPage({
   const t = await getText();
   const { user } = await getAuthOrRedirect({ returnTo: favoritesPath });
   const query = await searchParams;
-  const [result, counts] = await Promise.all([
-    readFavorites(user.id, query),
-    readFavoriteCounts(user.id),
-  ]);
+  const countsPromise = readFavoriteCounts(user.id);
+  const resultPromise =
+    query.view === "lists" || query.view === "people" || query.view === "wishes"
+      ? readFavorites(user.id, query)
+      : countsPromise.then((counts) =>
+          readFavorites(user.id, {
+            ...query,
+            view: parseFavoritesQuery(query, counts).view,
+          }),
+        );
+  const [result, counts] = await Promise.all([resultPromise, countsPromise]);
   const count =
     result.lists?.length ?? result.wishes?.length ?? result.people?.length ?? 0;
   const empty = count === 0;

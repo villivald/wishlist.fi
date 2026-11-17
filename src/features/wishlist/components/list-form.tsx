@@ -1,6 +1,6 @@
 "use client";
-import { Eye } from "lucide-react";
-import { useActionState, useId } from "react";
+import { Eye, EyeOff } from "lucide-react";
+import { useActionState, useId, useState } from "react";
 import { ActionFeedback } from "@/components/form/action-feedback";
 import { EMPTY_ACTION_STATE } from "@/components/form/utils/to-action-state";
 import styles from "@/components/shell.module.css";
@@ -35,6 +35,8 @@ export function ListForm({
     { ...EMPTY_ACTION_STATE, timestamp: 0 },
   );
   const prefix = useId();
+  const [startsHidden, setStartsHidden] = useState(false);
+  const VisibilityIcon = startsHidden ? EyeOff : Eye;
 
   const fieldValue = (name: "title" | "description") => {
     const submitted = state.payload?.get(name);
@@ -60,14 +62,36 @@ export function ListForm({
             className={formStyles["visibility-notice"]}
             id={`${prefix}-visibility-help`}
           >
-            <Eye size={22} aria-hidden="true" />
-            <div>
-              <strong>{t("Your new list starts visible")}</strong>
-              <p>
-                {t(
-                  "Your chosen audience can see it immediately. You can hide it from the list page at any time.",
-                )}
-              </p>
+            <VisibilityIcon size={22} aria-hidden="true" />
+            <div className={formStyles["visibility-content"]}>
+              <div aria-live="polite" aria-atomic="true">
+                <strong>
+                  {startsHidden
+                    ? t("Your new list starts hidden")
+                    : t("Your new list starts visible")}
+                </strong>
+                <p>
+                  {startsHidden
+                    ? t(
+                        "Only admins can see it until you publish it from the list page.",
+                      )
+                    : t(
+                        "Your chosen audience can see it immediately. You can hide it now or from the list page at any time.",
+                      )}
+                </p>
+              </div>
+              <input
+                type="hidden"
+                name="publication"
+                value={startsHidden ? "DRAFT" : "PUBLISHED"}
+              />
+              <button
+                type="button"
+                className={styles["secondary-button"]}
+                onClick={() => setStartsHidden((hidden) => !hidden)}
+              >
+                {startsHidden ? t("Start visible") : t("Hide list")}
+              </button>
             </div>
           </div>
         )}
