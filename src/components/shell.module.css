@@ -1362,6 +1362,7 @@
 
 .new-wish-form > fieldset {
   padding: clamp(1.1rem, 3vw, 1.75rem);
+  padding-inline: clamp(0.75rem, 3vw, 1.75rem);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);

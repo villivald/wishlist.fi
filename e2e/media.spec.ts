@@ -17,6 +17,7 @@ const signIn = async (page: Page) => {
 };
 
 const upload = async (page: Page, description: string, replacement = false) => {
+  const editingWish = new URL(page.url()).pathname.includes("/wishes/");
   const buffer = await sharp({
     create: { width: 900, height: 600, channels: 3, background: "#467cb0" },
   })
@@ -25,16 +26,27 @@ const upload = async (page: Page, description: string, replacement = false) => {
   await page
     .locator('input[type="file"]')
     .setInputFiles({ name: "photo.png", mimeType: "image/png", buffer });
-  await page.getByLabel("Image description", { exact: true }).fill(description);
+  await page
+    .getByLabel(
+      editingWish ? "Image description (optional)" : "Image description",
+      { exact: true },
+    )
+    .fill(description);
   await page
     .getByRole("button", {
-      name: replacement ? "Replace image" : "Upload image",
+      name: editingWish
+        ? "Save changes"
+        : replacement
+          ? "Replace image"
+          : "Upload image",
       exact: true,
     })
     .click();
-  await expect(
-    page.getByRole("status", { name: "Save confirmation" }),
-  ).toHaveText("Image saved.");
+  if (editingWish) await expect(page).not.toHaveURL(/\/edit(?:\?|$)/);
+  else
+    await expect(
+      page.getByRole("status", { name: "Save confirmation" }),
+    ).toHaveText("Image saved.");
   const image = page.getByRole("img", { name: description, exact: true });
   await expect(image).toBeVisible();
   await expectImageLoaded(image);
@@ -215,8 +227,6 @@ test("wish image editing uses the wish title when its image description is blank
 }) => {
   await signIn(page);
   await page.goto(`${wishUrl}/edit`);
-  const description = page.getByLabel("Image description", { exact: true });
-  await expect(description).not.toHaveAttribute("required");
   const buffer = await sharp({
     create: { width: 80, height: 40, channels: 3, background: "blue" },
   })
@@ -227,11 +237,13 @@ test("wish image editing uses the wish title when its image description is blank
     mimeType: "image/png",
     buffer,
   });
+  const description = page.getByLabel("Image description (optional)", {
+    exact: true,
+  });
+  await expect(description).not.toHaveAttribute("required");
   await description.fill("   ");
-  await page.getByRole("button", { name: "Upload image", exact: true }).click();
-  await expect(
-    page.getByRole("status", { name: "Save confirmation" }),
-  ).toHaveText("Image saved.");
+  await page.getByRole("button", { name: "Save changes", exact: true }).click();
+  await expect(page).toHaveURL(wishUrl);
   await expect(
     page.getByRole("img", { name: "A camera", exact: true }),
   ).toBeVisible();
@@ -318,9 +330,9 @@ test("wish images reject malformed files, survive errors and follow hidden acces
     buffer: Buffer.from("not an image"),
   });
   await page
-    .getByLabel("Image description", { exact: true })
+    .getByLabel("Image description (optional)", { exact: true })
     .fill("A fake image");
-  await page.getByRole("button", { name: "Upload image", exact: true }).click();
+  await page.getByRole("button", { name: "Save changes", exact: true }).click();
   const error = page.getByRole("main").getByRole("alert");
   await expect(error).toContainText("valid, still JPEG");
   await expect(error).toBeFocused();
@@ -345,10 +357,9 @@ test("wish images reject malformed files, survive errors and follow hidden acces
     mimeType: "image/png",
     buffer: Buffer.alloc(3 * 1024 * 1024 + 1),
   });
-  await page
-    .getByRole("button", { name: "Replace image", exact: true })
-    .click();
-  await expect(page.getByRole("main").getByRole("alert")).toContainText("3 MB");
+  await expect(
+    page.getByText("Choose an image up to 3 MB.", { exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("img", { name: "A camera on a blue background" }),
   ).toBeVisible();

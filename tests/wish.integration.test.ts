@@ -1,5 +1,7 @@
+import sharp from "sharp";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { EMPTY_ACTION_STATE } from "@/components/form/utils/to-action-state";
+import { readableImage } from "@/features/media/service/media";
 import {
   addWish,
   changeWishState,
@@ -54,6 +56,73 @@ afterAll(async () => {
 });
 
 describe("wish permissions and lifecycle", () => {
+  it("keeps, replaces and removes images together with wish details, without partial saves on invalid input", async () => {
+    const bytes = await sharp({
+      create: { width: 80, height: 40, channels: 3, background: "blue" },
+    })
+      .png()
+      .toBuffer();
+    const wish = await createWish(
+      "e2e-owner",
+      listId,
+      { title: "Original wish" },
+      { bytes, alt: "Original image" },
+    );
+    const original = await prisma.media.findFirstOrThrow({
+      where: { wishId: wish.id },
+    });
+    await updateWish("e2e-owner", listId, wish.id, {
+      title: "Changed link",
+      externalUrl: "https://shop.example/other",
+    });
+    expect(
+      (await prisma.media.findFirstOrThrow({ where: { wishId: wish.id } })).id,
+    ).toBe(original.id);
+    await expect(
+      updateWish(
+        "e2e-owner",
+        listId,
+        wish.id,
+        { title: "Should not save" },
+        { bytes: Buffer.from("invalid"), alt: "Invalid" },
+      ),
+    ).rejects.toThrow();
+    expect(
+      (await prisma.wish.findUniqueOrThrow({ where: { id: wish.id } })).title,
+    ).toBe("Changed link");
+    expect(
+      (await prisma.media.findFirstOrThrow({ where: { wishId: wish.id } })).id,
+    ).toBe(original.id);
+    await updateWish(
+      "e2e-owner",
+      listId,
+      wish.id,
+      { title: "With replacement" },
+      { bytes, alt: "Replacement" },
+    );
+    const replacement = await prisma.media.findFirstOrThrow({
+      where: { wishId: wish.id },
+    });
+    expect(replacement.id).not.toBe(original.id);
+    expect(await readableImage(original.id, "e2e-owner")).toBeNull();
+    await expect(
+      updateWish("e2e-member", listId, wish.id, { title: "Forbidden" }, null),
+    ).rejects.toThrow();
+    expect(
+      (await prisma.media.findFirstOrThrow({ where: { wishId: wish.id } })).id,
+    ).toBe(replacement.id);
+    await updateWish(
+      "e2e-owner",
+      listId,
+      wish.id,
+      { title: "Without image" },
+      null,
+    );
+    expect(await prisma.media.count({ where: { wishId: wish.id } })).toBe(0);
+    expect(
+      (await prisma.wish.findUniqueOrThrow({ where: { id: wish.id } })).title,
+    ).toBe("Without image");
+  });
   it("creates from session identity and ignores forged parent, author, and fulfillment fields", async () => {
     const data = new FormData();
     data.set("title", "Title-only wish");

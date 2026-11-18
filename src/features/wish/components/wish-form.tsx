@@ -1,5 +1,12 @@
 "use client";
-import { type ReactNode, useActionState, useId, useState } from "react";
+import {
+  type ReactNode,
+  useActionState,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import { ActionFeedback } from "@/components/form/action-feedback";
 import { EMPTY_ACTION_STATE } from "@/components/form/utils/to-action-state";
 import styles from "@/components/shell.module.css";
@@ -7,6 +14,8 @@ import {
   ImagePicker,
   type SelectedImage,
 } from "@/features/media/components/image-picker";
+import type { MediaImage as ImageDetails } from "@/features/media/types";
+import { notifyFormChanged } from "@/i18n/form-changes";
 import { Link } from "@/i18n/navigation";
 import { useText } from "@/i18n/use-text";
 import { listPath, wishPath } from "@/paths";
@@ -22,6 +31,7 @@ type WishValues = {
   currency: WishCurrency | null;
   priority: number | null;
   hidden: boolean;
+  image: ImageDetails | null;
 };
 
 function Field({
@@ -61,7 +71,17 @@ export function WishForm({
 }) {
   const t = useText();
 
+  const form = useRef<HTMLFormElement>(null);
   const [image, setImage] = useState<SelectedImage | null>(null);
+  const [removeImage, setRemoveImage] = useState(false);
+  const [productUrl, setProductUrl] = useState(wish?.externalUrl ?? "");
+  const previewUrl = image?.previewUrl;
+  useEffect(
+    () => () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    },
+    [previewUrl],
+  );
   const [state, action, pending] = useActionState(
     wish ? editWish.bind(null, listId, wish.id) : addWish.bind(null, listId),
     { ...EMPTY_ACTION_STATE, timestamp: 0 },
@@ -90,8 +110,9 @@ export function WishForm({
 
   return (
     <form
+      ref={form}
       action={action}
-      className={`${styles.form} ${!wish ? styles["new-wish-form"] : ""}`}
+      className={`${styles.form} ${styles["new-wish-form"]}`}
       aria-busy={pending}
     >
       <ActionFeedback state={state} />
@@ -131,7 +152,12 @@ export function WishForm({
           hint={t("A full link starting with https:// or http://.")}
           errors={state.fieldErrors.externalUrl}
         >
-          <input {...fieldProps("externalUrl")} type="url" maxLength={2048} />
+          <input
+            {...fieldProps("externalUrl")}
+            type="url"
+            maxLength={2048}
+            onChange={(event) => setProductUrl(event.currentTarget.value)}
+          />
         </Field>
 
         <div className={styles["form-row"]}>
@@ -202,18 +228,28 @@ export function WishForm({
           </p>
         </div>
       </fieldset>
-      {!wish && (
-        <fieldset disabled={pending} className={styles["form-fields"]}>
-          <legend className={styles["visually-hidden"]}>
-            {t("Wish image")}
-          </legend>
-          <ImagePicker
-            value={image}
-            onChange={setImage}
-            resetKey={state.timestamp}
-          />
-        </fieldset>
-      )}
+      <fieldset disabled={pending} className={styles["form-fields"]}>
+        <legend className={styles["visually-hidden"]}>{t("Wish image")}</legend>
+        {removeImage && <input type="hidden" name="removeImage" value="on" />}
+        <ImagePicker
+          value={image}
+          onChange={(value) => {
+            setImage(value);
+            if (value) setRemoveImage(false);
+            notifyFormChanged(form.current);
+          }}
+          resetKey={state.timestamp}
+          productUrl={productUrl}
+          listId={listId}
+          creating={!wish}
+          currentImage={wish?.image ?? null}
+          removing={removeImage}
+          onToggleRemoval={() => {
+            setRemoveImage((value) => !value);
+            notifyFormChanged(form.current);
+          }}
+        />
+      </fieldset>
       <div className={styles.actions}>
         <button type="submit" disabled={pending} className={styles.button}>
           {pending ? t("Saving…") : wish ? t("Save changes") : t("Add wish")}

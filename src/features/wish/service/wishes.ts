@@ -1,4 +1,8 @@
-import { attachStagedImage, stageImage } from "@/features/media/service/media";
+import {
+  attachStagedImage,
+  detachImage,
+  stageImage,
+} from "@/features/media/service/media";
 import { imageSelection } from "@/features/media/types";
 import { participantReservation } from "@/features/reservation/service/access";
 import { manageableLists } from "@/features/wishlist/service/access";
@@ -246,8 +250,18 @@ export const updateWish = async (
   listId: string,
   wishId: string,
   input: unknown,
+  image?: { bytes: Buffer; alt: string } | null,
 ) => {
   const data = wishSchema.parse(input);
+  const target = { kind: "wish" as const, listId, wishId };
+  const imageId = image
+    ? await stageImage(
+        userId,
+        target,
+        image.alt.trim() || data.title,
+        image.bytes,
+      )
+    : null;
 
   await prisma.$transaction(async (tx) => {
     await lockManagedWish(tx, userId, listId, wishId);
@@ -260,6 +274,8 @@ export const updateWish = async (
     }
 
     await tx.wish.update({ where: { id: wishId }, data });
+    if (imageId) await attachStagedImage(tx, userId, target, imageId);
+    else if (image === null) await detachImage(tx, userId, target);
   });
 };
 

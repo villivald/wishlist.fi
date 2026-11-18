@@ -141,21 +141,26 @@ export const replaceImage = async (
   );
 };
 
+export const detachImage = async (
+  tx: Prisma.TransactionClient,
+  userId: string,
+  target: MediaTarget,
+) => {
+  await lockTarget(tx, target, userId);
+  await tx.media.updateMany({
+    where: targetFields(target, userId),
+    data: {
+      userId: null,
+      wishlistId: null,
+      wishId: null,
+      cleanupAfter: new Date(),
+    },
+  });
+};
+
 export const removeImage = async (userId: string, input: unknown) => {
   const target = mediaTargetSchema.parse(input);
-
-  await prisma.$transaction(async (tx) => {
-    await lockTarget(tx, target, userId);
-    await tx.media.updateMany({
-      where: targetFields(target, userId),
-      data: {
-        userId: null,
-        wishlistId: null,
-        wishId: null,
-        cleanupAfter: new Date(),
-      },
-    });
-  });
+  await prisma.$transaction((tx) => detachImage(tx, userId, target));
 };
 
 export const readableImage = (id: string, userId: string | null) =>

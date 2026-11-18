@@ -7,12 +7,248 @@
 
 .picker {
   display: grid;
-  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.25rem;
   min-width: 0;
 }
 
 .picker button {
   justify-self: start;
+}
+
+.suggestion {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  padding: clamp(0.5rem, 2vw, 0.875rem);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--muted);
+}
+
+.suggestion .suggestion-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  letter-spacing: normal;
+}
+
+.suggestion-heading svg,
+.selection-heading svg,
+.change-note svg {
+  flex-shrink: 0;
+}
+
+.panel-header,
+.selected-image {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.picker .panel-heading,
+.picker .selection-heading {
+  margin: 0;
+  font-family: inherit;
+  font-weight: 650;
+  line-height: 1.4;
+  letter-spacing: normal;
+  overflow-wrap: anywhere;
+}
+
+.picker .panel-heading {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.hint,
+.suggestion-status {
+  color: var(--muted-foreground);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.suggestion-status {
+  min-height: 3.2em;
+}
+
+.current-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.875rem;
+  min-width: 0;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.current-preview {
+  flex: 0 0 72px;
+  width: 72px;
+  height: 54px;
+}
+
+.current-row[data-removing="true"] .current-preview {
+  opacity: 0.45;
+}
+
+.current-copy {
+  display: grid;
+  justify-items: start;
+  gap: 0.25rem;
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.image-label {
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.change-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: clamp(0.5rem, 2vw, 0.75rem);
+  border-inline-start: 2px solid var(--input);
+  background: var(--muted);
+  font-size: 0.825rem;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.change-note svg {
+  margin-top: 0.15rem;
+}
+
+.preview-frame {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  max-height: 14rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--background);
+}
+
+.preview-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.preview-frame[data-loading="true"] .preview-image {
+  opacity: 0;
+}
+
+.preview-placeholder {
+  display: grid;
+  justify-items: center;
+  gap: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.spinner {
+  animation: image-spin 1s linear infinite;
+}
+
+@keyframes image-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}
+
+.selected-image {
+  gap: 0.875rem;
+}
+
+.selection-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+}
+
+.picker .selection-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.95rem;
+}
+
+.selection-heading svg {
+  color: var(--positive);
+}
+
+.quiet-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-width: 0;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 0.4rem 0.25rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--muted-foreground);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.quiet-button:hover {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.image-actions {
+  gap: 0.5rem 0.75rem;
+}
+
+.image-actions button,
+.current-copy button {
+  padding-inline: 0.6rem;
+  font-size: 0.85rem;
+}
+
+.accept-button {
+  border-color: var(--foreground);
+  background: var(--surface);
+}
+
+.upload-area {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.625rem;
+}
+
+.upload-button {
+  justify-self: start;
+  gap: 0.5rem;
+  padding-inline: 0.6rem;
+  font-size: 0.9rem;
 }
 
 .filename {
@@ -60,6 +296,11 @@
   aspect-ratio: 4 / 3;
   height: auto;
   max-height: 18rem;
+}
+
+.current-preview .thumbnail {
+  height: 100%;
+  aspect-ratio: auto;
 }
 
 .editor[data-target="avatar"] > picture > .thumbnail {

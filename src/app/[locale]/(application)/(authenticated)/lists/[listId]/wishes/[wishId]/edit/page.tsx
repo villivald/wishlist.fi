@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import styles from "@/components/shell.module.css";
 import { getAuthOrRedirect } from "@/features/auth/queries/get-auth-or-redirect";
-import { ImageEditor } from "@/features/media/components/image-editor";
 import { WishForm } from "@/features/wish/components/wish-form";
 import { readWish } from "@/features/wish/service/wishes";
 import { getText } from "@/i18n/server";
@@ -42,18 +41,7 @@ export default async function EditWishPage({
           </p>
         </div>
       </header>
-      <div className={styles["content-columns"]}>
-        <div className={styles["content-panel"]}>
-          <WishForm listId={listId} wish={wish} />
-        </div>
-        <div className={styles["content-panel"]}>
-          <ImageEditor
-            target={{ kind: "wish", listId, wishId }}
-            image={wish.image}
-            fallbackAlt={wish.title}
-          />
-        </div>
-      </div>
+      <WishForm listId={listId} wish={wish} />
     </section>
   );
 }

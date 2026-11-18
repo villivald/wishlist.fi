@@ -100,11 +100,31 @@ export const editWish = async (
   data: FormData,
 ) => {
   const { user } = await getAuthOrRedirect();
+  const payload = new FormData();
+  for (const [name, value] of data) {
+    if (typeof value === "string") payload.append(name, value);
+  }
 
   try {
-    await updateWish(user.id, listId, wishId, wishInput(data));
+    const file = data.get("image");
+    if (file instanceof File && file.size > MAX_IMAGE_BYTES)
+      throw new MediaError("Choose an image up to 3 MB.");
+    await updateWish(
+      user.id,
+      listId,
+      wishId,
+      wishInput(data),
+      file instanceof File && file.size
+        ? {
+            bytes: Buffer.from(await file.arrayBuffer()),
+            alt: String(data.get("imageAlt") ?? ""),
+          }
+        : data.get("removeImage") === "on"
+          ? null
+          : undefined,
+    );
   } catch (error) {
-    return actionError(error, data);
+    return actionError(error, payload);
   }
 
   refreshWish(listId, wishId);

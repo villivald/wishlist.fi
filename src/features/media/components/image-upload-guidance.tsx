@@ -6,12 +6,35 @@ export function ImageUploadGuidance({
   kind,
   id,
   creating = false,
+  compact = false,
 }: {
   kind: MediaTarget["kind"];
   id: string;
   creating?: boolean;
+  compact?: boolean;
 }) {
   const t = useText();
+  if (compact)
+    return (
+      <div className={shell["image-guidance"]}>
+        <p id={id} className={shell["field-help"]}>
+          {t("JPEG, PNG or WebP. Up to 3 MB.")}
+        </p>
+        <details className={shell["image-limits"]}>
+          <summary>{t("Image guidance")}</summary>
+          <p className={shell["field-help"]}>
+            {t(
+              "Images are resized automatically. Without an image, the wish title appears on its cover.",
+            )}
+          </p>
+          <p className={shell["field-help"]}>
+            {t(
+              "Use a still image up to 20 megapixels and 8,192 pixels per side. If an image is too large, resize it before uploading.",
+            )}
+          </p>
+        </details>
+      </div>
+    );
   return (
     <div className={shell["image-guidance"]}>
       <p id={id} className={shell["field-help"]}>
