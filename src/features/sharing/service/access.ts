@@ -33,6 +33,7 @@ export const lockSharing = async (
       title: true,
       ownerId: true,
       visibility: true,
+      publication: true,
       memberships: { where: { userId }, select: { role: true } },
     },
   });

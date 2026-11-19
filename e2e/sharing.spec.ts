@@ -35,7 +35,10 @@ const invite = async (
     .fill(email);
   await page.getByLabel("Invitation role").selectOption(role);
   await page
-    .getByRole("button", { name: "Send invitation", exact: true })
+    .getByRole("button", {
+      name: role === "ADMIN" ? "Invite as admin" : "Send invitation",
+      exact: true,
+    })
     .click();
   await expect(page.getByRole("status")).toContainText("Invitation created");
   await expect(page.getByText("Email sent", { exact: false })).toBeVisible();
@@ -149,13 +152,13 @@ test("private creation, email invitation, member access, reservation and removal
   await page.getByRole("link", { name: "Create a list", exact: true }).click();
   await page.getByLabel("Title", { exact: true }).fill("New private draft");
   await page
-    .getByRole("radio", { name: "Selected people", exact: true })
+    .getByRole("radio", { name: "Invited people", exact: true })
     .check();
   await page.getByLabel("Title", { exact: true }).fill("   ");
   await page.getByRole("button", { name: "Create list", exact: true }).click();
   await expect(page.getByText("Enter a title", { exact: true })).toBeVisible();
   await expect(
-    page.getByRole("radio", { name: "Selected people", exact: true }),
+    page.getByRole("radio", { name: "Invited people", exact: true }),
   ).toBeChecked();
   await page.getByLabel("Title", { exact: true }).fill("New private draft");
   await page.getByRole("button", { name: "Create list", exact: true }).click();
@@ -163,7 +166,7 @@ test("private creation, email invitation, member access, reservation and removal
     page.getByRole("heading", { name: "New private draft", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText("Visible · Private list", { exact: true }),
+    page.getByText("Invited people · Private", { exact: true }),
   ).toBeVisible();
   const invitation = await invite(page);
   const other = await browser.newPage({ baseURL: testOrigin });
@@ -445,22 +448,22 @@ test("sharing and visibility controls support keyboard use at 320px in dark mode
     name: "Who can view this list?",
     exact: true,
   });
-  await audience.getByRole("radio", { name: "Anyone", exact: true }).check();
+  await audience.getByRole("radio", { name: "Public", exact: true }).check();
   await audience.getByRole("checkbox").check();
   await audience
-    .getByRole("button", { name: "Save audience", exact: true })
+    .getByRole("button", { name: "Make list public", exact: true })
     .click();
   await expect(
-    audience.getByRole("radio", { name: "Anyone", exact: true }),
+    audience.getByRole("radio", { name: "Public", exact: true }),
   ).toBeChecked();
   await expect(audience.locator('button[type="submit"]')).toHaveCount(0);
   expect(await (await request.get(listUrl)).text()).toContain(title);
   await audience
-    .getByRole("radio", { name: "Selected people", exact: true })
+    .getByRole("radio", { name: "Invited people", exact: true })
     .check();
   await audience.getByRole("checkbox").check();
   await audience
-    .getByRole("button", { name: "Save audience", exact: true })
+    .getByRole("button", { name: "Share with invited people", exact: true })
     .click();
   await expect(audience.locator('button[type="submit"]')).toHaveCount(0);
   expect(await (await request.get(listUrl)).text()).not.toContain(title);
@@ -484,7 +487,7 @@ test("sharing separates account and guest access and keeps member controls colla
   await signIn(page);
   await page.goto(sharingUrl);
   await expect(
-    page.getByText("Restricted access", { exact: true }),
+    page.getByText("Invited people · Private", { exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Manage guest links", exact: true }),
@@ -574,16 +577,24 @@ for (const locale of ["en", "fi"] as const) {
       exact: true,
     });
     const selected = audience.getByRole("radio", {
-      name: locale === "fi" ? "Valitut henkilöt" : "Selected people",
+      name: locale === "fi" ? "Kutsutut henkilöt" : "Invited people",
       exact: true,
     });
+    const email = page.getByLabel(
+      locale === "fi" ? "Kutsuttavan sähköposti" : "Invitation email",
+      { exact: true },
+    );
+    await email.fill("draft@example.test");
     await selected.focus();
     await page.keyboard.press("Space");
     await expect(selected).toBeChecked();
     // Picking an unsaved audience cannot silently revoke access.
     expect(await (await request.get(listUrl)).text()).toContain(title);
     const save = audience.getByRole("button", {
-      name: locale === "fi" ? "Tallenna katseluoikeudet" : "Save audience",
+      name:
+        locale === "fi"
+          ? "Jaa kutsutuille henkilöille"
+          : "Share with invited people",
       exact: true,
     });
     await save.click();
@@ -593,6 +604,7 @@ for (const locale of ["en", "fi"] as const) {
     await save.click();
     await expect(audience.locator('button[type="submit"]')).toHaveCount(0);
     await expect(selected).toBeChecked();
+    await expect(email).toHaveValue("draft@example.test");
     expect(await (await request.get(listUrl)).text()).not.toContain(title);
     const contact = page.getByRole("button", {
       name: `e2e-member ${accounts.member.email}`,
@@ -602,10 +614,6 @@ for (const locale of ["en", "fi"] as const) {
     await contact.focus();
     await page.keyboard.press("Enter");
     await expect(contact).toHaveAttribute("aria-pressed", "true");
-    const email = page.getByLabel(
-      locale === "fi" ? "Kutsuttavan sähköposti" : "Invitation email",
-      { exact: true },
-    );
     await expect(email).toHaveValue(accounts.member.email);
     await expect(email).toBeFocused();
     await page.screenshot({
@@ -705,12 +713,15 @@ test("public lists keep the Premium gate visible and active guest links are coun
   await signIn(page);
   await page.goto(sharingUrl);
   await expect(
-    page.getByRole("radio", { name: "Selected people", exact: true }),
+    page.getByRole("radio", { name: "Invited people", exact: true }),
   ).toBeDisabled();
   await expect(
     page.getByRole("button", { name: "Send invitation", exact: true }),
   ).toHaveCount(0);
-  await expect(page.getByText(/Active guest links: 1\./)).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Invite people", exact: true }),
+  ).toHaveCount(0);
+  await expect(page.getByText(/Guest links: 1\./)).toBeVisible();
   await page
     .getByRole("link", { name: "Review or disable guest links", exact: true })
     .click();
@@ -751,10 +762,10 @@ for (const locale of ["en", "fi"] as const) {
     await favorite.focus();
     await page.keyboard.press("Enter");
     await expect(favorite).toHaveAttribute("aria-pressed", "true");
-    const email = page.getByLabel(
-      locale === "fi" ? "Tai kutsu sähköpostitse" : "Or invite by email",
-      { exact: true },
-    );
+    const email = page.getByRole("textbox", {
+      name: locale === "fi" ? "Tai kutsu sähköpostitse" : "Or invite by email",
+      exact: true,
+    });
     await expect(email).toHaveValue("");
     await expect(email).not.toHaveAttribute("required");
     // Typing an address replaces the selected account, never sends to both.

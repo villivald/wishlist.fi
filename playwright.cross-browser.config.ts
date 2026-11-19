@@ -33,6 +33,8 @@ export default defineConfig({
     "**/personalization.spec.ts",
     "**/sharing-card-access.spec.ts",
     "**/list-visibility.spec.ts",
+    "**/list-access.spec.ts",
+    "**/list-header.spec.ts",
     "**/feedback.spec.ts",
     "**/mobile-feedback.spec.ts",
     "**/premium.spec.ts",

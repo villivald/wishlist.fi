@@ -1,7 +1,7 @@
 import { Eye, EyeOff, LockKeyhole } from "lucide-react";
 import { useText } from "@/i18n/use-text";
+import { listAccess, listAccessLabels } from "../list-access";
 import styles from "./list-publication.module.css";
-import { PublicationControl } from "./publication-control";
 
 export function ListPublication({
   list,
@@ -27,27 +27,18 @@ export function ListPublication({
         <Icon size={20} aria-hidden="true" />
         <strong>
           <span className={styles["full-status"]}>
-            {!visible
-              ? t("Hidden · Admins only")
-              : anyone
-                ? t("Visible · Public list")
-                : t("Visible · Private list")}
+            {t(listAccessLabels[listAccess(list)])}
           </span>
           <span className={styles["short-status"]} aria-hidden="true">
-            {t(!visible ? "Hidden" : anyone ? "Public list" : "Private list")}
+            {t(!visible ? "Hidden" : anyone ? "Public" : "Invited people")}
           </span>
         </strong>
       </p>
       <p className={styles.help}>
         {visible
           ? t("Hiding the list ends its active reservations.")
-          : anyone
-            ? t("Showing it makes it public, including in Browse.")
-            : t(
-                "Showing it keeps access limited to invited people and active guest links.",
-              )}
+          : t("Publish to choose who can view this list.")}
       </p>
-      <PublicationControl id={list.id} visible={visible} secondary={visible} />
     </section>
   );
 }

@@ -1,6 +1,5 @@
 "use client";
-import { Eye, EyeOff } from "lucide-react";
-import { useActionState, useId, useState } from "react";
+import { useActionState, useId } from "react";
 import { ActionFeedback } from "@/components/form/action-feedback";
 import { EMPTY_ACTION_STATE } from "@/components/form/utils/to-action-state";
 import styles from "@/components/shell.module.css";
@@ -9,7 +8,7 @@ import { Link } from "@/i18n/navigation";
 import { useText } from "@/i18n/use-text";
 import { listPath, listsPath } from "@/paths";
 import { createList, updateList } from "../actions/manage-list";
-import formStyles from "./list-form.module.css";
+import { ListAccessChoices } from "./list-access-choices";
 
 type ListValues = {
   id: string;
@@ -35,8 +34,7 @@ export function ListForm({
     { ...EMPTY_ACTION_STATE, timestamp: 0 },
   );
   const prefix = useId();
-  const [startsHidden, setStartsHidden] = useState(false);
-  const VisibilityIcon = startsHidden ? EyeOff : Eye;
+  const submittedAccess = state.payload?.get("access");
 
   const fieldValue = (name: "title" | "description") => {
     const submitted = state.payload?.get(name);
@@ -56,45 +54,6 @@ export function ListForm({
         <legend className={styles["visually-hidden"]}>
           {t("List details")}
         </legend>
-
-        {!list && (
-          <div
-            className={formStyles["visibility-notice"]}
-            id={`${prefix}-visibility-help`}
-          >
-            <VisibilityIcon size={22} aria-hidden="true" />
-            <div className={formStyles["visibility-content"]}>
-              <div aria-live="polite" aria-atomic="true">
-                <strong>
-                  {startsHidden
-                    ? t("Your new list starts hidden")
-                    : t("Your new list starts visible")}
-                </strong>
-                <p>
-                  {startsHidden
-                    ? t(
-                        "Only admins can see it until you publish it from the list page.",
-                      )
-                    : t(
-                        "Your chosen audience can see it immediately. You can hide it now or from the list page at any time.",
-                      )}
-                </p>
-              </div>
-              <input
-                type="hidden"
-                name="publication"
-                value={startsHidden ? "DRAFT" : "PUBLISHED"}
-              />
-              <button
-                type="button"
-                className={styles["secondary-button"]}
-                onClick={() => setStartsHidden((hidden) => !hidden)}
-              >
-                {startsHidden ? t("Start visible") : t("Hide list")}
-              </button>
-            </div>
-          </div>
-        )}
 
         <div className={styles.field}>
           <label htmlFor={`${prefix}-title`}>{t("Title")}</label>
@@ -117,6 +76,17 @@ export function ListForm({
               t("Give your list a name. Up to 200 characters.")}
           </p>
         </div>
+
+        {!list && (
+          <ListAccessChoices
+            defaultValue={
+              submittedAccess === "HIDDEN" || submittedAccess === "PRIVATE"
+                ? submittedAccess
+                : "PUBLIC"
+            }
+            premium={canCreatePrivate}
+          />
+        )}
 
         <div className={styles.field}>
           <label htmlFor={`${prefix}-description`}>
@@ -164,57 +134,6 @@ export function ListForm({
             )}
           </p>
         </div>
-
-        {!list && (
-          <fieldset
-            className={formStyles.audience}
-            aria-describedby={`${prefix}-visibility-help`}
-          >
-            <legend>{t("Who can view this list?")}</legend>
-            <label className={formStyles.choice}>
-              <input
-                type="radio"
-                name="visibility"
-                value="PUBLIC"
-                defaultChecked={
-                  (state.payload?.get("visibility") ?? "PUBLIC") === "PUBLIC"
-                }
-                aria-labelledby={`${prefix}-public-label`}
-                aria-describedby={`${prefix}-public-help`}
-              />
-              <span>
-                <strong id={`${prefix}-public-label`}>{t("Anyone")}</strong>
-                <span id={`${prefix}-public-help`}>
-                  {t(
-                    "Appears in Browse. Anyone can view it without an account.",
-                  )}
-                </span>
-              </span>
-            </label>
-            <label className={formStyles.choice}>
-              <input
-                type="radio"
-                name="visibility"
-                value="PRIVATE"
-                disabled={!canCreatePrivate}
-                defaultChecked={state.payload?.get("visibility") === "PRIVATE"}
-                aria-labelledby={`${prefix}-private-label`}
-                aria-describedby={`${prefix}-private-help`}
-              />
-              <span>
-                <strong id={`${prefix}-private-label`}>
-                  {t("Selected people")}
-                </strong>
-                <span id={`${prefix}-private-help`}>
-                  {t(
-                    "Stays out of Browse. Invited members and anyone with a guest link can view it.",
-                  )}
-                  {!canCreatePrivate && <> {t("Requires Premium.")}</>}
-                </span>
-              </span>
-            </label>
-          </fieldset>
-        )}
 
         <ThemePicker
           current={list?.theme ?? "classic"}

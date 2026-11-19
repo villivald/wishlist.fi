@@ -4,6 +4,8 @@ import {
   readDeletionImpact,
 } from "@/features/account/service/account";
 import { authenticate } from "@/features/auth/service/accounts";
+import { readGuestList } from "@/features/guest/service/access";
+import { createGuestLink } from "@/features/guest/service/links";
 import { reserveWish } from "@/features/reservation/service/reservations";
 import {
   acceptInvitation,
@@ -11,6 +13,7 @@ import {
   readInvitation,
   revokeInvitation,
 } from "@/features/sharing/service/invitations";
+import { setListAccess } from "@/features/sharing/service/list-access";
 import {
   changeMemberRole,
   removeMember,
@@ -24,6 +27,7 @@ import {
   readWishlist,
   updateWishlist,
 } from "@/features/wishlist/service/lists";
+import { ReservationReviewRequired } from "@/features/wishlist/service/reservation-review";
 import { prisma } from "@/lib/prisma";
 import { assertTestDatabase } from "../e2e/environment";
 import { accounts, resetFixtures } from "../e2e/seed";
@@ -809,5 +813,305 @@ describe("private lists and collaboration", () => {
       );
     }
     await expect(invite()).rejects.toThrow("Too many attempts");
+  });
+});
+
+describe("outcome-based list access", () => {
+  it("only ends reservations for people losing access when a public list becomes private", async () => {
+    await setListAccess(owner.user.id, owner.session.id, listId, {
+      access: "PUBLIC",
+    });
+    await join((await invite()).id);
+    const kept = await reserveWish(member.user.id, listId, "e2e-sharing-wish");
+    await prisma.user.create({
+      data: {
+        id: "e2e-access-visitor",
+        username: "e2e-access-visitor",
+        email: "e2e-access-visitor@example.test",
+        emailVerified: true,
+      },
+    });
+    await prisma.wish.create({
+      data: {
+        id: "e2e-visitor-wish",
+        title: "Visitor's reserved gift",
+        wishlistId: listId,
+        reservations: {
+          create: {
+            id: "e2e-visitor-reservation",
+            userId: "e2e-access-visitor",
+          },
+        },
+      },
+    });
+    await setListAccess(owner.user.id, owner.session.id, listId, {
+      access: "PRIVATE",
+      expectedAccess: "PUBLIC",
+    });
+    expect(
+      (await prisma.reservation.findUniqueOrThrow({ where: { id: kept.id } }))
+        .endedAt,
+    ).toBeNull();
+    expect(
+      (
+        await prisma.reservation.findUniqueOrThrow({
+          where: { id: "e2e-visitor-reservation" },
+        })
+      ).endedAt,
+    ).not.toBeNull();
+    expect(await readWishlist(listId, member.user.id)).not.toBeNull();
+    expect(await readWishlist(listId, "e2e-access-visitor")).toBeNull();
+  });
+
+  it.each(["PUBLIC", "PRIVATE"] as const)(
+    "preserves a hidden list's saved %s audience and does not change access while reading settings",
+    async (visibility) => {
+      await prisma.wishlist.update({
+        where: { id: listId },
+        data: { visibility, publication: "DRAFT" },
+      });
+      const before = await prisma.wishlist.findUniqueOrThrow({
+        where: { id: listId },
+      });
+      await readSharing(listId, owner.user.id);
+      expect(
+        await prisma.wishlist.findUniqueOrThrow({ where: { id: listId } }),
+      ).toEqual(before);
+      expect(await readWishlist(listId, null)).toBeNull();
+      await setListAccess(owner.user.id, owner.session.id, listId, {
+        access: "PUBLIC",
+        expectedAccess: "HIDDEN",
+      });
+      expect(await readWishlist(listId, null)).not.toBeNull();
+      await setListAccess(owner.user.id, owner.session.id, listId, {
+        access: "HIDDEN",
+        expectedAccess: "PUBLIC",
+      });
+      expect(
+        await prisma.wishlist.findUniqueOrThrow({ where: { id: listId } }),
+      ).toMatchObject({ publication: "DRAFT", visibility: "PUBLIC" });
+      await setListAccess(owner.user.id, owner.session.id, listId, {
+        access: "PRIVATE",
+        expectedAccess: "HIDDEN",
+      });
+      expect(
+        await prisma.wishlist.findUniqueOrThrow({ where: { id: listId } }),
+      ).toMatchObject({ publication: "PUBLISHED", visibility: "PRIVATE" });
+      expect(await readWishlist(listId, null)).toBeNull();
+    },
+  );
+
+  it("shares a hidden public list privately with existing members and guest links in the invitation transaction", async () => {
+    await join((await invite()).id);
+    const guest = await createGuestLink(
+      owner.user.id,
+      owner.session.id,
+      listId,
+      { label: "Family", days: 7 },
+    );
+    await prisma.wishlist.update({
+      where: { id: listId },
+      data: { visibility: "PUBLIC", publication: "DRAFT" },
+    });
+    expect(await readWishlist(listId, member.user.id)).toBeNull();
+    expect(await readGuestList(listId, guest.token)).toBeNull();
+    const invitation = await inviteMember(
+      owner.user.id,
+      owner.session.id,
+      listId,
+      {
+        email: "e2e-new-invitee@example.test",
+        role: "MEMBER",
+        shareAccess: "PRIVATE",
+        expectedAccess: "HIDDEN",
+      },
+    );
+    expect(
+      await prisma.invitation.findUniqueOrThrow({
+        where: { id: invitation.id },
+      }),
+    ).toMatchObject({ acceptedAt: null });
+    expect(
+      await prisma.wishlist.findUniqueOrThrow({ where: { id: listId } }),
+    ).toMatchObject({ publication: "PUBLISHED", visibility: "PRIVATE" });
+    expect(await readWishlist(listId, member.user.id)).not.toBeNull();
+    expect(await readGuestList(listId, guest.token)).not.toBeNull();
+    expect(await readWishlist(listId, null)).toBeNull();
+  });
+
+  it.each(["MEMBER", "ADMIN"] as const)(
+    "keeps hidden access when inviting a %s without sharing",
+    async (role) => {
+      await prisma.wishlist.update({
+        where: { id: listId },
+        data: { visibility: "PUBLIC", publication: "DRAFT" },
+      });
+      const invitation = await inviteMember(
+        owner.user.id,
+        owner.session.id,
+        listId,
+        {
+          email: accounts.member.email,
+          role,
+          shareAccess: "KEEP",
+          expectedAccess: "HIDDEN",
+        },
+      );
+      await join(invitation.id);
+      expect(
+        await prisma.wishlist.findUniqueOrThrow({ where: { id: listId } }),
+      ).toMatchObject({ publication: "DRAFT", visibility: "PUBLIC" });
+      expect(Boolean(await readWishlist(listId, member.user.id))).toBe(
+        role === "ADMIN",
+      );
+      expect(await readWishlist(listId, null)).toBeNull();
+    },
+  );
+
+  it("rolls back private sharing when the invitation fails and refuses stale or mismatched requests", async () => {
+    await prisma.wishlist.update({
+      where: { id: listId },
+      data: { visibility: "PUBLIC", publication: "DRAFT" },
+    });
+    const input = {
+      email: accounts.owner.email,
+      role: "MEMBER",
+      shareAccess: "PRIVATE",
+      expectedAccess: "HIDDEN",
+    };
+    await expect(
+      inviteMember(owner.user.id, owner.session.id, listId, input),
+    ).rejects.toThrow("already belongs");
+    expect(
+      await prisma.wishlist.findUniqueOrThrow({ where: { id: listId } }),
+    ).toMatchObject({ publication: "DRAFT", visibility: "PUBLIC" });
+    await expect(
+      inviteMember(owner.user.id, owner.session.id, listId, {
+        ...input,
+        email: accounts.member.email,
+        role: "ADMIN",
+      }),
+    ).rejects.toThrow("List access changed");
+    await expect(
+      inviteMember(owner.user.id, owner.session.id, listId, {
+        ...input,
+        email: accounts.member.email,
+        expectedAccess: undefined,
+      }),
+    ).rejects.toThrow("List access changed");
+    await setListAccess(owner.user.id, owner.session.id, listId, {
+      access: "PUBLIC",
+      expectedAccess: "HIDDEN",
+    });
+    await expect(
+      inviteMember(owner.user.id, owner.session.id, listId, {
+        ...input,
+        email: accounts.member.email,
+      }),
+    ).rejects.toThrow("List access changed");
+    await expect(
+      setListAccess(owner.user.id, owner.session.id, listId, {
+        access: "PRIVATE",
+        expectedAccess: "HIDDEN",
+      }),
+    ).rejects.toThrow("List access changed");
+    expect(
+      await prisma.invitation.count({ where: { wishlistId: listId } }),
+    ).toBe(0);
+    expect(await readWishlist(listId, null)).not.toBeNull();
+  });
+
+  it("checks current authorization and owner Premium while preserving existing private access after expiry", async () => {
+    await join((await invite()).id);
+    await expect(
+      setListAccess(member.user.id, member.session.id, listId, {
+        access: "PUBLIC",
+      }),
+    ).rejects.toThrow("permission");
+    await expect(
+      setListAccess(owner.user.id, "expired-session", listId, {
+        access: "PUBLIC",
+      }),
+    ).rejects.toThrow("session expired");
+    await expirePremium();
+    await setListAccess(owner.user.id, owner.session.id, listId, {
+      access: "HIDDEN",
+    });
+    await setListAccess(owner.user.id, owner.session.id, listId, {
+      access: "PRIVATE",
+    });
+    expect(await readWishlist(listId, member.user.id)).not.toBeNull();
+    await setListAccess(owner.user.id, owner.session.id, listId, {
+      access: "PUBLIC",
+    });
+    await expect(
+      setListAccess(owner.user.id, owner.session.id, listId, {
+        access: "PRIVATE",
+      }),
+    ).rejects.toThrow("Active Premium");
+    await setListAccess(owner.user.id, owner.session.id, listId, {
+      access: "HIDDEN",
+    });
+    await expect(
+      inviteMember(owner.user.id, owner.session.id, listId, {
+        email: "e2e-new-invitee@example.test",
+        role: "MEMBER",
+        shareAccess: "PRIVATE",
+        expectedAccess: "HIDDEN",
+      }),
+    ).rejects.toThrow("Active Premium");
+    expect(
+      await prisma.wishlist.findUniqueOrThrow({ where: { id: listId } }),
+    ).toMatchObject({ publication: "DRAFT", visibility: "PUBLIC" });
+  });
+
+  it("reviews every active reservation again under the list lock before hiding", async () => {
+    await join((await invite()).id);
+    const first = await reserveWish(member.user.id, listId, "e2e-sharing-wish");
+    await expect(
+      setListAccess(owner.user.id, owner.session.id, listId, {
+        access: "HIDDEN",
+      }),
+    ).rejects.toBeInstanceOf(ReservationReviewRequired);
+    await prisma.wish.create({
+      data: {
+        id: "e2e-access-second-wish",
+        title: "Second reserved gift",
+        wishlistId: listId,
+      },
+    });
+    const second = await reserveWish(
+      member.user.id,
+      listId,
+      "e2e-access-second-wish",
+    );
+    await expect(
+      setListAccess(owner.user.id, owner.session.id, listId, {
+        access: "HIDDEN",
+        confirmedReservationIds: [first.id],
+      }),
+    ).rejects.toBeInstanceOf(ReservationReviewRequired);
+    expect(
+      await prisma.reservation.count({
+        where: { wish: { wishlistId: listId }, endedAt: null },
+      }),
+    ).toBe(2);
+    await setListAccess(owner.user.id, owner.session.id, listId, {
+      access: "HIDDEN",
+      confirmedReservationIds: [first.id, second.id],
+    });
+    expect(
+      await prisma.reservation.count({
+        where: { wish: { wishlistId: listId }, endedAt: null },
+      }),
+    ).toBe(0);
+    await setListAccess(owner.user.id, owner.session.id, listId, {
+      access: "PRIVATE",
+    });
+    expect(
+      await prisma.reservation.count({
+        where: { wish: { wishlistId: listId }, endedAt: null },
+      }),
+    ).toBe(0);
   });
 });

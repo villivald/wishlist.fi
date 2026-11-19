@@ -431,6 +431,7 @@ test("streamed loading previews reserve space, hide decorative content and respe
       "/en/lists",
       "/en/lists?shared=1",
       "/en/account/profile",
+      "/en/lists/new",
       "/en/lists/e2e-loading-list",
       "/en/lists/e2e-loading-list/edit",
       "/en/lists/e2e-loading-list/sharing",
@@ -448,15 +449,20 @@ test("streamed loading previews reserve space, hide decorative content and respe
           ? path.includes("/wishes/")
             ? "Edit wish"
             : "List settings"
-          : path.endsWith("/new")
-            ? "Add a wish"
-            : path.endsWith("/sharing")
-              ? "List access"
-              : path.endsWith("/guest-links")
-                ? "Guest links"
-                : null;
+          : path === "/en/lists/new"
+            ? "Create a list"
+            : path.endsWith("/new")
+              ? "Add a wish"
+              : path.endsWith("/sharing")
+                ? "List access"
+                : path.endsWith("/guest-links")
+                  ? "Guest links"
+                  : null;
       if (expectedHeading) {
-        const previewHeading = preview.locator("h1");
+        const previewHeading =
+          path === "/en/lists/new"
+            ? previewPage.locator("main h1:visible").first()
+            : preview.locator("h1");
         // Without JavaScript, nested routes can remain on the parent fallback.
         const previewTitle = (await previewHeading.count())
           ? await previewHeading.textContent()
@@ -481,6 +487,10 @@ test("streamed loading previews reserve space, hide decorative content and respe
         const previewBounds = parentFallback
           ? null
           : await previewHeading.boundingBox();
+        const previewTitleInput = preview.locator("#loading-list-title");
+        const titleBounds = (await previewTitleInput.isVisible())
+          ? await previewTitleInput.boundingBox()
+          : null;
         await page.goto(path);
         const heading = page.getByRole("heading", {
           name: expectedHeading,
@@ -488,6 +498,12 @@ test("streamed loading previews reserve space, hide decorative content and respe
         });
         await expect(heading).toBeVisible();
         await page.evaluate(() => document.fonts.ready);
+        if (titleBounds)
+          expect(
+            await page
+              .getByRole("textbox", { name: "Title", exact: true })
+              .boundingBox(),
+          ).toEqual(titleBounds);
         if (previewBounds) {
           expect(await heading.boundingBox()).toEqual(previewBounds);
         }

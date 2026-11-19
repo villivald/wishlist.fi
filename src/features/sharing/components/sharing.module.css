@@ -69,12 +69,31 @@
   margin-top: 0.2rem;
 }
 
-.audience {
+.access-fields,
+.invitation-access {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
-  border: 0;
   min-width: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
+
+.invitation-access legend {
+  padding: 0;
+  margin-bottom: 0.75rem;
+  font-weight: 650;
+}
+
+.invitation-impact {
+  display: grid;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-inline-start: 3px solid var(--focus);
+  background: var(--muted);
+  font-size: 0.9rem;
+  hyphens: auto;
 }
 
 .choice {
@@ -85,16 +104,7 @@
   border: 2px solid var(--border);
   border-radius: var(--radius);
   cursor: pointer;
-}
-
-.choice-preview {
-  display: grid;
-  align-content: start;
-  gap: 1rem;
-  min-height: 7.5rem;
-  padding: 1.25rem;
-  border: 2px solid var(--border);
-  border-radius: var(--radius);
+  hyphens: auto;
 }
 
 .choice:hover {
@@ -213,6 +223,8 @@
 
 .invitation-fields > .recipient-status,
 .invitation-fields > .suggestions,
+.invitation-fields > .invitation-access,
+.invitation-fields > .invitation-impact,
 .invitation-fields > button {
   grid-column: 1 / -1;
 }
@@ -416,7 +428,6 @@
 
 @media (width <= 700px) {
   .methods,
-  .audience,
   .invitation-fields {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -424,7 +435,6 @@
 
 @media (width <= 400px) {
   .choice,
-  .choice-preview,
   .audience-review {
     padding: 12px;
   }

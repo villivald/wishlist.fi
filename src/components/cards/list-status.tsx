@@ -1,5 +1,6 @@
 import { Eye, EyeOff, LockKeyhole } from "lucide-react";
 import styles from "@/components/shell.module.css";
+import { listAccess, listAccessLabels } from "@/features/wishlist/list-access";
 import { useText } from "@/i18n/use-text";
 
 export function ListStatus({
@@ -27,11 +28,7 @@ export function ListStatus({
       }
     >
       <Icon size={16} aria-hidden="true" />
-      {hidden
-        ? t("Hidden · Admins only")
-        : privateList
-          ? t("Visible · People with access")
-          : t("Visible · Anyone")}
+      {t(listAccessLabels[listAccess({ publication, visibility })])}
     </p>
   );
 }

@@ -38,13 +38,17 @@ export default async function InvitationPage({
             {t("Invited by")} {invitation.invitedBy}.
           </p>
           <p>
-            {t("You have been invited as")}{" "}
             {invitation.role === "ADMIN"
-              ? t("an admin who can manage content and people")
-              : t("a member who can view and reserve available wishes")}
-            {t(
-              ". Hidden lists are visible only to admins. Reservations must be enabled by the list admins.",
-            )}
+              ? t(
+                  "After you accept as an admin, you can open this list even when hidden and manage its wishes, settings, and members.",
+                )
+              : invitation.hidden
+                ? t(
+                    "This list is hidden. You can accept as a member now and open it once an admin publishes it.",
+                  )
+                : t(
+                    "After you accept as a member, you can open this list and reserve gifts when reservations are enabled.",
+                  )}
           </p>
           <p>
             {t("Expires")}{" "}

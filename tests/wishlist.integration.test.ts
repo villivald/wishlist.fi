@@ -219,6 +219,39 @@ describe("wishlist management and authorization", () => {
     expect(await readWishlist(list.id, null)).toBeNull();
   });
 
+  it.each(["HIDDEN", "PUBLIC"] as const)(
+    "uses the submitted %s access choice rather than client-derived visibility fields",
+    async (access) => {
+      const data = new FormData();
+      data.set("title", "Server-authoritative access");
+      data.set("access", access);
+      data.set("publication", access === "HIDDEN" ? "PUBLISHED" : "DRAFT");
+      await expect(createList(EMPTY_ACTION_STATE, data)).rejects.toThrow(
+        "REDIRECT:/en/lists/",
+      );
+      expect(
+        await prisma.wishlist.findFirstOrThrow({
+          where: { title: "Server-authoritative access" },
+        }),
+      ).toMatchObject({
+        publication: access === "HIDDEN" ? "DRAFT" : "PUBLISHED",
+        visibility: "PUBLIC",
+      });
+    },
+  );
+
+  it("does not fall back to public access for an invalid or unavailable private choice", async () => {
+    const data = new FormData();
+    data.set("title", "Rejected access");
+    data.set("access", "INVALID");
+    expect((await createList(EMPTY_ACTION_STATE, data)).status).toBe("ERROR");
+    data.set("access", "PRIVATE");
+    expect((await createList(EMPTY_ACTION_STATE, data)).status).toBe("ERROR");
+    expect(
+      await prisma.wishlist.count({ where: { title: "Rejected access" } }),
+    ).toBe(0);
+  });
+
   it("rejects invalid publication states during creation", async () => {
     const data = new FormData();
     data.set("title", "Invalid state");

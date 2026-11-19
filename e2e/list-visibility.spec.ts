@@ -14,44 +14,83 @@ const signIn = async (page: Page) => {
 
 test.beforeEach(resetFixtures);
 
+const shareList = async (
+  page: Page,
+  access: "PUBLIC" | "PRIVATE",
+  locale: "en" | "fi" = "en",
+) => {
+  const path = new URL(page.url()).pathname;
+  await page
+    .getByRole("link", {
+      name: locale === "fi" ? "Listan käyttöoikeudet" : "List access",
+      exact: true,
+    })
+    .click();
+  const region = page.getByRole("region", {
+    name:
+      locale === "fi" ? "Kuka näkee tämän listan?" : "Who can view this list?",
+    exact: true,
+  });
+  await region
+    .getByRole("radio", {
+      name:
+        access === "PUBLIC"
+          ? locale === "fi"
+            ? "Julkinen"
+            : "Public"
+          : locale === "fi"
+            ? "Kutsutut henkilöt"
+            : "Invited people",
+      exact: true,
+    })
+    .check();
+  await region.getByRole("checkbox").check();
+  const save = region.getByRole("button", {
+    name:
+      access === "PUBLIC"
+        ? locale === "fi"
+          ? "Tee listasta julkinen"
+          : "Make list public"
+        : locale === "fi"
+          ? "Jaa kutsutuille henkilöille"
+          : "Share with invited people",
+    exact: true,
+  });
+  await save.click();
+  await expect(region.locator('button[type="submit"]')).toHaveCount(0);
+  await page.goto(path);
+};
+
 for (const locale of ["en", "fi"] as const) {
-  test(`${locale}: a new list can start hidden, keeps its choice after validation, and can be published later`, async ({
+  test(`${locale}: a new list can start hidden, keeps its choice after validation, and can be shared later`, async ({
     page,
     browser,
   }, info) => {
     await signIn(page);
     await page.goto(`/${locale}/lists/new`);
-    const hiddenTitle =
-      locale === "fi"
-        ? "Uusi listasi on aluksi piilotettu"
-        : "Your new list starts hidden";
-    const hideLabel = locale === "fi" ? "Piilota lista" : "Hide list";
     const titleLabel = locale === "fi" ? "Nimi" : "Title";
     const createLabel = locale === "fi" ? "Luo lista" : "Create list";
-    const notice = page.locator('[id$="-visibility-help"]');
-    const hide = notice.getByRole("button", { name: hideLabel, exact: true });
-    await hide.focus();
-    await page.keyboard.press("Enter");
-    await expect(notice).toContainText(hiddenTitle);
-    const startVisible = notice.getByRole("button", {
-      name: locale === "fi" ? "Näytä lista heti" : "Start visible",
+    const choices = page.getByRole("group", {
+      name:
+        locale === "fi"
+          ? "Kuka näkee tämän listan?"
+          : "Who can view this list?",
       exact: true,
     });
-    await expect(startVisible).toBeFocused();
-    await startVisible.click();
-    await expect(hide).toBeVisible();
-    await hide.click();
+    const hidden = choices.getByRole("radio", {
+      name: locale === "fi" ? "Piilotettu" : "Hidden",
+      exact: true,
+    });
+    await hidden.focus();
+    await page.keyboard.press("Space");
+    await expect(hidden).toBeChecked();
     await page.getByLabel(titleLabel, { exact: true }).fill("   ");
     await page.getByRole("button", { name: createLabel, exact: true }).click();
     await expect(page.getByLabel(titleLabel, { exact: true })).toHaveAttribute(
       "aria-invalid",
       "true",
     );
-    await expect(notice).toContainText(hiddenTitle);
-    await expect(page.locator('input[name="publication"]')).toHaveValue(
-      "DRAFT",
-    );
-
+    await expect(hidden).toBeChecked();
     await page.emulateMedia({ reducedMotion: "reduce" });
     for (const dark of [false, true]) {
       await page.setViewportSize({ width: 1280, height: 800 });
@@ -59,7 +98,7 @@ for (const locale of ["en", "fi"] as const) {
         document.documentElement.classList.toggle("dark", dark);
         document.documentElement.style.fontSize = "";
       }, dark);
-      await notice.screenshot({
+      await choices.screenshot({
         path: info.outputPath(
           `creation-${locale}-${dark ? "dark" : "light"}.png`,
         ),
@@ -74,28 +113,15 @@ for (const locale of ["en", "fi"] as const) {
         ),
       ).toBe(true);
       expect(
-        await notice.evaluate(
+        await choices.evaluate(
           (element) => element.scrollWidth <= element.clientWidth,
         ),
       ).toBe(true);
-      await expect(startVisible).toBeVisible();
-      await notice.screenshot({
+      await choices.screenshot({
         path: info.outputPath(
           `creation-${locale}-${dark ? "dark" : "light"}-320.png`,
         ),
       });
-      await startVisible.click();
-      expect(
-        await notice.evaluate(
-          (element) => element.scrollWidth <= element.clientWidth,
-        ),
-      ).toBe(true);
-      await notice.screenshot({
-        path: info.outputPath(
-          `creation-visible-${locale}-${dark ? "dark" : "light"}-320.png`,
-        ),
-      });
-      await hide.click();
     }
     expect(
       (await new AxeBuilder({ page }).include("main").analyze()).violations,
@@ -110,9 +136,11 @@ for (const locale of ["en", "fi"] as const) {
     await expect(
       page.getByRole("heading", { name: "Hidden from the start", exact: true }),
     ).toBeVisible();
-    const publishLabel = locale === "fi" ? "Julkaise lista" : "Publish list";
     await expect(
-      page.getByRole("button", { name: publishLabel, exact: true }),
+      page.getByRole("link", {
+        name: locale === "fi" ? "Listan käyttöoikeudet" : "List access",
+        exact: true,
+      }),
     ).toBeVisible();
     const db = testPrisma();
     try {
@@ -132,12 +160,12 @@ for (const locale of ["en", "fi"] as const) {
           exact: true,
         }),
       ).toHaveCount(0);
-      await page.reload();
-      await page
-        .getByRole("button", { name: publishLabel, exact: true })
-        .click();
+      await shareList(page, "PUBLIC", locale);
       await expect(
-        page.getByRole("button", { name: hideLabel, exact: true }),
+        page.getByRole("button", {
+          name: locale === "fi" ? "Piilota lista" : "Hide list",
+          exact: true,
+        }),
       ).toBeVisible();
       await visitor.reload();
       await expect(
@@ -159,8 +187,8 @@ test("new lists explain their visible state and can be hidden from the list page
   await signIn(page);
   await page.goto("/en/lists/new");
   await expect(
-    page.getByText("Your new list starts visible", { exact: true }),
-  ).toBeVisible();
+    page.getByRole("radio", { name: "Public", exact: true }),
+  ).toBeChecked();
   await page.getByLabel("Title", { exact: true }).fill("Ready when I am");
   await page.getByRole("button", { name: "Create list", exact: true }).click();
   await expect(
@@ -184,21 +212,21 @@ test("new lists explain their visible state and can be hidden from the list page
     header.getByRole("button", { name: "QR card", exact: true }),
   ).toBeVisible();
   await header.screenshot({ path: info.outputPath("list-header.png") });
-  await expect(control).toContainText("Visible · Public list");
+  await expect(control).toContainText("Public · Anyone can view");
   await expect(
-    control.getByRole("button", { name: "Hide list", exact: true }),
+    page.getByRole("button", { name: "Hide list", exact: true }),
   ).toBeVisible();
   const bounds = await control.boundingBox();
   expect(bounds?.height).toBeLessThanOrEqual(
     (page.viewportSize()?.width ?? 0) >= 768 ? 80 : 170,
   );
   expect(
-    (await control.getByRole("button", { name: "Hide list" }).boundingBox())
+    (await page.getByRole("button", { name: "Hide list" }).boundingBox())
       ?.height,
   ).toBeGreaterThanOrEqual(44);
   await control.screenshot({ path: info.outputPath("compact-visibility.png") });
   await page.reload();
-  await expect(control).toContainText("Visible · Public list");
+  await expect(control).toContainText("Public · Anyone can view");
 
   const visitor = await browser.newPage();
   try {
@@ -214,13 +242,12 @@ test("new lists explain their visible state and can be hidden from the list page
       nativeDialogs.push(dialog.message());
       await dialog.dismiss();
     });
-    await control
-      .getByRole("button", { name: "Hide list", exact: true })
-      .click();
+    await page.getByRole("button", { name: "Hide list", exact: true }).click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
     await expect(
-      control.getByRole("button", { name: "Publish list", exact: true }),
+      page.getByRole("button", { name: "Publish list", exact: true }),
     ).toBeVisible();
+    await expect(control).toContainText("Hidden · Admins only");
     expect(nativeDialogs).toEqual([]);
     await visitor.reload();
     await expect(
@@ -276,12 +303,10 @@ test("showing a private list preserves its audience and controls fit both langua
     exact: true,
   });
   await expect(control).toContainText(
-    "Publishing keeps access limited to invited people and active guest links.",
+    "Publish to choose who can view this list.",
   );
-  await control
-    .getByRole("button", { name: "Publish list", exact: true })
-    .click();
-  await expect(control).toContainText("Visible · Private list");
+  await shareList(page, "PRIVATE");
+  await expect(control).toContainText("Invited people · Private");
   const visitor = await browser.newPage();
   try {
     await visitor.goto(page.url());

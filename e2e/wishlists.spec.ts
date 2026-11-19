@@ -33,10 +33,10 @@ test("create, validate, edit, publish, unpublish, and confirm deletion", async (
   await page.getByRole("link", { name: "Create a list", exact: true }).click();
   await page.getByLabel("Title", { exact: true }).fill("   ");
   await expect(
-    page.getByRole("radio", { name: "Anyone", exact: true }),
+    page.getByRole("radio", { name: "Public", exact: true }),
   ).toBeChecked();
   await expect(
-    page.getByRole("radio", { name: "Selected people", exact: true }),
+    page.getByRole("radio", { name: "Invited people", exact: true }),
   ).toBeDisabled();
   await page
     .getByLabel("Description (optional)")
@@ -141,8 +141,11 @@ test("draft/private content stays out of direct responses and another account ca
   const listUrl = await createList(page, "Draft title must stay secret");
   await page.getByRole("button", { name: "Hide list", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "Publish list", exact: true }),
+    page.getByRole("link", { name: "List access", exact: true }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "List visibility", exact: true }),
+  ).toContainText("Hidden · Admins only");
   const other = await browser.newPage({ baseURL: testOrigin });
 
   try {
@@ -176,9 +179,21 @@ test("draft/private content stays out of direct responses and another account ca
       other.getByRole("button", { name: "Delete permanently" }),
     ).toHaveCount(0);
 
+    await page.getByRole("link", { name: "List access", exact: true }).click();
+    await page.getByRole("radio", { name: "Public", exact: true }).check();
     await page
-      .getByRole("button", { name: "Publish list", exact: true })
+      .getByRole("region", { name: "Who can view this list?", exact: true })
+      .getByRole("checkbox")
+      .check();
+    await page
+      .getByRole("button", { name: "Make list public", exact: true })
       .click();
+    await expect(
+      page
+        .getByRole("region", { name: "Who can view this list?", exact: true })
+        .locator('button[type="submit"]'),
+    ).toHaveCount(0);
+    await page.goto(listUrl);
     await expect(page.getByRole("button", { name: "Hide list" })).toBeVisible();
     await other.goto(listUrl);
     await expect(

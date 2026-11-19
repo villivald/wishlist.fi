@@ -22,7 +22,7 @@ test.beforeEach(async () => {
       data: {
         id: "e2e-feedback",
         title: "A few lovely things",
-        publication: "DRAFT",
+        publication: "PUBLISHED",
         ownerId: "e2e-owner",
         memberships: { create: { userId: "e2e-owner", role: "ADMIN" } },
       },
@@ -38,11 +38,8 @@ test("visibility success keeps the toolbar stable and pauses while keyboard-focu
   await signIn(page);
   await page.goto(path);
   const control = page.getByRole("region", { name: "List visibility" });
-  const show = control.getByRole("button", {
-    name: "Publish list",
-    exact: true,
-  });
-  await expect(show).toBeVisible();
+  const hide = page.getByRole("button", { name: "Hide list", exact: true });
+  await expect(hide).toBeVisible();
   const header = page.locator("header").filter({
     has: page.getByRole("heading", {
       name: "A few lovely things",
@@ -51,17 +48,20 @@ test("visibility success keeps the toolbar stable and pauses while keyboard-focu
   });
   const before = await header.boundingBox();
   await page.clock.install();
-  await show.click();
+  await hide.click();
   const toast = page.getByRole("status", { name: "Save confirmation" });
-  await expect(toast).toContainText("List published.");
+  await expect(toast).toContainText("List hidden from viewers.");
   await expect(control.getByRole("status")).toHaveCount(0);
-  const hide = control.getByRole("button", { name: "Hide list", exact: true });
-  await expect(hide).toBeVisible();
+  const change = page.getByRole("button", {
+    name: "Publish list",
+    exact: true,
+  });
+  await expect(change).toBeVisible();
   expect((await header.boundingBox())?.height).toBeLessThanOrEqual(
     (before?.height ?? 0) + 2,
   );
   if ((page.viewportSize()?.width ?? 0) >= 768) {
-    const button = await hide.boundingBox();
+    const button = await change.boundingBox();
     const sharing = await header
       .getByRole("button", { name: "QR card", exact: true })
       .boundingBox();
@@ -76,7 +76,7 @@ test("visibility success keeps the toolbar stable and pauses while keyboard-focu
   await header.screenshot({
     path: info.outputPath("header-after-success.png"),
   });
-  await hide.focus();
+  await change.focus();
   await toast.hover();
   await page.clock.fastForward(9000);
   await expect(toast).toBeVisible();
@@ -86,9 +86,20 @@ test("visibility success keeps the toolbar stable and pauses while keyboard-focu
   await expect(toast).toBeVisible();
   await close.press("Escape");
   await expect(toast).toHaveCount(0);
-  await expect(hide).toBeFocused();
+  await expect(change).toBeFocused();
+  const db = testPrisma();
+  try {
+    await db.wishlist.update({
+      where: { id: "e2e-feedback" },
+      data: { publication: "PUBLISHED" },
+    });
+  } finally {
+    await db.$disconnect();
+  }
+  await page.reload();
   await hide.click();
   await expect(toast).toContainText("List hidden from viewers.");
+  await page.mouse.move(0, 0);
   await page.evaluate(() => {
     Object.defineProperty(document, "visibilityState", {
       configurable: true,
@@ -168,11 +179,8 @@ test("navigation clears old confirmations and does not pause the next one", asyn
 }) => {
   await signIn(page);
   await page.goto(path);
-  const control = page.getByRole("region", { name: "List visibility" });
   await page.clock.install();
-  await control
-    .getByRole("button", { name: "Publish list", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Hide list", exact: true }).click();
   const toast = page.getByRole("status", { name: "Save confirmation" });
   await expect(toast).toBeVisible();
   await toast.getByRole("button", { name: "Dismiss confirmation" }).focus();
@@ -182,7 +190,18 @@ test("navigation clears old confirmations and does not pause the next one", asyn
   await expect(page).toHaveURL(/\/lists$/);
   await expect(toast).toHaveCount(0);
   await page.goBack();
-  await control.getByRole("button", { name: "Hide list", exact: true }).click();
+  const db = testPrisma();
+  try {
+    await db.wishlist.update({
+      where: { id: "e2e-feedback" },
+      data: { publication: "PUBLISHED" },
+    });
+  } finally {
+    await db.$disconnect();
+  }
+  await page.reload();
+  await page.getByRole("button", { name: "Hide list", exact: true }).click();
+  await page.mouse.move(0, 0);
   await expect(toast).toContainText("List hidden from viewers.");
   await page.clock.fastForward(9000);
   await expect(toast).toHaveCount(0);

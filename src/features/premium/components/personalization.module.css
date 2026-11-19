@@ -37,8 +37,6 @@
 }
 
 .theme .themed-heading {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
   border: 0;
   padding: 0;
 }
@@ -708,5 +706,11 @@
 
   .profile-example p {
     grid-column: auto;
+  }
+}
+
+@media (width <= 400px) {
+  .hero .content {
+    padding: 12px;
   }
 }

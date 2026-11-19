@@ -39,11 +39,22 @@ const upload = async (
   await page
     .locator('input[type="file"]')
     .setInputFiles({ name: "image.png", mimeType: "image/png", buffer });
-  await page.getByLabel("Image description", { exact: true }).fill(alt);
-  await page.getByRole("button", { name: "Upload image", exact: true }).click();
+  const avatar = target.get("kind") === "avatar";
+  await page
+    .getByRole("textbox", {
+      name: avatar ? "Image description" : "Image description (optional)",
+      exact: true,
+    })
+    .fill(alt);
+  await page
+    .getByRole("button", {
+      name: avatar ? "Upload image" : "Save changes",
+      exact: true,
+    })
+    .click();
   await expect(
     page.getByRole("status", { name: "Save confirmation" }),
-  ).toHaveText("Image saved.");
+  ).toHaveText(avatar ? "Image saved." : "Changes saved.");
 };
 const accessible = async (page: Page) => {
   expect(
@@ -167,7 +178,7 @@ test("image previews, placeholders, ownership and card actions work", async ({
         ownedCard.getByText(
           state.publication === "DRAFT"
             ? "Hidden · Admins only"
-            : "Restricted access",
+            : "Invited people · Private",
         ),
       ).toBeVisible();
     }

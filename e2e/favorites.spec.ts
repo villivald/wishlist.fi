@@ -199,7 +199,7 @@ test("one-click favorites persist across lists, wishes, people, and detail navig
     0,
   );
   await expect(
-    listCard.getByText("Visible · Anyone", { exact: true }),
+    listCard.getByText("Public · Anyone can view", { exact: true }),
   ).toHaveCount(0);
   await expect(
     listCard.getByRole("button", { name: "Copy link to Favorite gift list" }),

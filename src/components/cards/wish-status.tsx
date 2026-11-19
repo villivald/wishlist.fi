@@ -26,7 +26,7 @@ export function WishStatus({
           ) : (
             <Eye size={16} aria-hidden="true" />
           )}
-          {hidden ? t("Hidden") : t("Visible")}
+          {hidden ? t("Hidden from viewers") : t("Visible")}
         </span>
       )}
       {fulfilled && (

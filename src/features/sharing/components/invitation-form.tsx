@@ -5,6 +5,7 @@ import { ActionFeedback } from "@/components/form/action-feedback";
 import type { ActionState } from "@/components/form/utils/to-action-state";
 import { EMPTY_ACTION_STATE } from "@/components/form/utils/to-action-state";
 import styles from "@/components/shell.module.css";
+import { type ListAccess, listAccess } from "@/features/wishlist/list-access";
 import { useText } from "@/i18n/use-text";
 import { sendInvitation } from "../actions/manage-sharing";
 import sharingStyles from "./sharing.module.css";
@@ -12,12 +13,21 @@ import sharingStyles from "./sharing.module.css";
 type Recipient = { email: string; username: string };
 type Favorite = { id: string; name: string | null; username: string };
 type Suggestions = { favorites: Favorite[]; previousRecipients: Recipient[] };
+type Access = { access: ListAccess; guestLinks: number };
 
 export function InvitationForm({
   listId,
   favorites = [],
   previousRecipients = [],
-}: { listId: string } & Partial<Suggestions>) {
+  publication,
+  visibility,
+  guestLinks,
+}: {
+  listId: string;
+  publication: "DRAFT" | "PUBLISHED";
+  visibility: "PUBLIC" | "PRIVATE";
+  guestLinks: number;
+} & Partial<Suggestions>) {
   const [state, action, pending] = useActionState(
     sendInvitation.bind(null, listId),
     { ...EMPTY_ACTION_STATE, timestamp: 0 },
@@ -33,6 +43,8 @@ export function InvitationForm({
         id={id}
         favorites={favorites}
         previousRecipients={previousRecipients}
+        access={listAccess({ publication, visibility })}
+        guestLinks={guestLinks}
       />
     </form>
   );
@@ -44,11 +56,14 @@ function InvitationFields({
   id,
   favorites,
   previousRecipients,
+  access,
+  guestLinks,
 }: {
   state: ActionState;
   pending: boolean;
   id: string;
-} & Suggestions) {
+} & Suggestions &
+  Access) {
   const t = useText();
   const [email, setEmail] = useState(String(state.payload?.get("email") ?? ""));
   const [recipientId, setRecipientId] = useState(
@@ -56,6 +71,21 @@ function InvitationFields({
   );
   const selected = favorites.find((person) => person.id === recipientId);
   const emailInput = useRef<HTMLInputElement>(null);
+  const [role, setRole] = useState(
+    String(state.payload?.get("role") ?? "MEMBER"),
+  );
+  const [shareAccess, setShareAccess] = useState(
+    String(state.payload?.get("shareAccess") ?? "PRIVATE"),
+  );
+  const hiddenMember = access === "HIDDEN" && role === "MEMBER";
+  const sharePrivately = hiddenMember && shareAccess === "PRIVATE";
+  const inviteLabel = sharePrivately
+    ? t("Share privately & invite")
+    : hiddenMember
+      ? t("Invite & keep hidden")
+      : role === "ADMIN"
+        ? t("Invite as admin")
+        : t("Send invitation");
   return (
     <fieldset
       disabled={pending}
@@ -151,6 +181,7 @@ function InvitationFields({
         )}
       </div>
       <input type="hidden" name="recipientId" value={selected?.id ?? ""} />
+      <input type="hidden" name="expectedAccess" value={access} />
       <div className={styles.field}>
         <label htmlFor={`${id}-email`}>
           {favorites.length ? t("Or invite by email") : t("Invitation email")}
@@ -183,20 +214,87 @@ function InvitationFields({
           id={`${id}-role`}
           name="role"
           aria-describedby={`${id}-role-help`}
-          defaultValue={String(state.payload?.get("role") ?? "MEMBER")}
+          value={role}
+          onChange={(event) => setRole(event.target.value)}
         >
-          <option value="MEMBER">{t("Member — view and reserve")}</option>
-          <option value="ADMIN">{t("Admin — edit and manage sharing")}</option>
+          <option value="MEMBER">{t("Member")}</option>
+          <option value="ADMIN">{t("Admin")}</option>
         </select>
         <p id={`${id}-role-help`} className={styles["field-help"]}>
-          {t(
-            "Members can view and reserve wishes. Admins can also add and edit wishes and manage the list with you.",
-          )}
+          {role === "ADMIN"
+            ? t("Can add and edit wishes, change settings, and manage access.")
+            : t("Can view and reserve wishes when reservations are enabled.")}
         </p>
+      </div>
+      {hiddenMember ? (
+        <fieldset className={sharingStyles["invitation-access"]}>
+          <legend>
+            {t("This list is hidden. How would you like to share it?")}
+          </legend>
+          {(["PRIVATE", "KEEP"] as const).map((value) => (
+            <label key={value} className={sharingStyles.choice}>
+              <input
+                type="radio"
+                name="shareAccess"
+                value={value}
+                checked={shareAccess === value}
+                onChange={() => setShareAccess(value)}
+                aria-labelledby={`${id}-share-${value}`}
+                aria-describedby={`${id}-share-${value}-help`}
+              />
+              <span>
+                <strong id={`${id}-share-${value}`}>
+                  {value === "PRIVATE"
+                    ? t("Share with invited people")
+                    : t("Keep hidden for now")}
+                </strong>
+                <span id={`${id}-share-${value}-help`}>
+                  {value === "PRIVATE"
+                    ? t(
+                        "They can open the list after accepting. It stays out of Browse.",
+                      )
+                    : t(
+                        "Send the invitation now. They can view after you change list access.",
+                      )}
+                </span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+      ) : (
+        <input type="hidden" name="shareAccess" value="KEEP" />
+      )}
+      <div
+        className={sharingStyles["invitation-impact"]}
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        <p>
+          {role === "ADMIN"
+            ? t("Admins can open and edit this list even when it is hidden.")
+            : sharePrivately
+              ? t(
+                  "This also makes the list available to all existing accepted members. Any active guest links will also allow viewing without signing in.",
+                )
+              : hiddenMember
+                ? t(
+                    "They can accept now, but cannot view until you change list access. This list stays hidden.",
+                  )
+                : access === "PUBLIC"
+                  ? t(
+                      "Anyone can already view this list. Accepting the invitation adds them as a member.",
+                    )
+                  : t(
+                      "They can open this list with their account after accepting.",
+                    )}
+        </p>
+        {sharePrivately && guestLinks > 0 && (
+          <p>{t("Active guest links: {count}", { count: guestLinks })}</p>
+        )}
       </div>
       <button className={styles.button} type="submit">
         <Mail size={18} aria-hidden="true" />
-        {pending ? t("Inviting…") : t("Send invitation")}
+        {pending ? t("Inviting…") : inviteLabel}
       </button>
     </fieldset>
   );

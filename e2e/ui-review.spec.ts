@@ -171,7 +171,9 @@ for (const locale of ["en", "fi"] as const) {
     await expect(
       page
         .getByRole("main")
-        .getByText(fi ? "Piilotettu" : "Hidden", { exact: true }),
+        .getByText(fi ? "Piilotettu katselijoilta" : "Hidden from viewers", {
+          exact: true,
+        }),
     ).toBeVisible();
     await expect(
       page.getByRole("link", {

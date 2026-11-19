@@ -2,6 +2,7 @@ import { ArrowLeft, Settings } from "lucide-react";
 import managementStyles from "@/components/list-management.module.css";
 import loading from "@/components/loading/loading-preview.module.css";
 import shell from "@/components/shell.module.css";
+import { ListAccessChoices } from "@/features/wishlist/components/list-access-choices";
 import { useText } from "@/i18n/use-text";
 import styles from "./sharing.module.css";
 
@@ -23,6 +24,7 @@ export function SharingSkeleton({
         className={managementStyles.page}
         aria-hidden="true"
         aria-busy="true"
+        inert
       >
         <div className={managementStyles.header}>
           <div className={managementStyles.navigation}>
@@ -53,14 +55,7 @@ export function SharingSkeleton({
               <div className={`${loading.block} ${loading.label}`} />
               <div className={`${loading.block} ${loading.line}`} />
             </div>
-            <div className={styles.audience}>
-              {[0, 1].map((index) => (
-                <div key={index} className={styles["choice-preview"]}>
-                  <div className={`${loading.block} ${loading.label}`} />
-                  <div className={`${loading.block} ${loading.line}`} />
-                </div>
-              ))}
-            </div>
+            <ListAccessChoices premium hideLegend disabled />
             <div className={styles["access-next"]}>
               <div className={`${loading.block} ${loading.line}`} />
               <div className={`${loading.block} ${loading.button}`} />

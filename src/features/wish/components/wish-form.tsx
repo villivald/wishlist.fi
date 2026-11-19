@@ -219,7 +219,7 @@ export function WishForm({
               }
               aria-describedby={`${prefix}-hidden-help`}
             />
-            {t("Hide this wish")}
+            {t("Hide this wish from viewers")}
           </label>
           <p id={`${prefix}-hidden-help`} className={styles.muted}>
             {t(

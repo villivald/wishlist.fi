@@ -11,12 +11,11 @@ import { LocalTime } from "@/components/local-time";
 import styles from "@/components/shell.module.css";
 import { getAuthOrRedirect } from "@/features/auth/queries/get-auth-or-redirect";
 import { cancelInvitation } from "@/features/sharing/actions/manage-sharing";
-import { AudienceControl } from "@/features/sharing/components/audience-control";
 import { InvitationForm } from "@/features/sharing/components/invitation-form";
+import { ListAccessControl } from "@/features/sharing/components/list-access-control";
 import { MemberAccess } from "@/features/sharing/components/member-access";
 import sharingStyles from "@/features/sharing/components/sharing.module.css";
 import { readSharing } from "@/features/sharing/service/queries";
-import { PublicationControl } from "@/features/wishlist/components/publication-control";
 import { Link } from "@/i18n/navigation";
 import { getText } from "@/i18n/server";
 import {
@@ -105,9 +104,13 @@ export default async function SharingPage({
             />
             <p className={styles.muted}>
               {!visible
-                ? t(
-                    "Only admins can open this list. Choose Show list on the list page when you’re ready.",
-                  )
+                ? !list.premium && !isPrivate
+                  ? t(
+                      "Only admins can open this list. Choose Public when you are ready for anyone to view it.",
+                    )
+                  : t(
+                      "Only you and other admins can open this list. Choose Invited people or Public below when you are ready to share.",
+                    )
                 : isPrivate
                   ? t(
                       "Members can open this list with their account. Active guest links give view-only access.",
@@ -121,43 +124,41 @@ export default async function SharingPage({
             <CopyLink path={listPath(listId)} title={list.title} />
           )}
         </div>
-        <AudienceControl
+        <ListAccessControl
           listId={listId}
+          publication={list.publication}
           visibility={list.visibility}
           premium={list.premium}
+          guestLinks={list._count.guestLinks}
         />
-        <div className={sharingStyles["access-next"]}>
-          <p>
-            {isPrivate
-              ? t(
-                  "Choose people below. Only accepted members can sign in to view this list.",
-                )
-              : t(
-                  "Inviting people does not restrict access. Choose Selected people to make this list private.",
-                )}
-          </p>
-          <Link href="#invite-heading">{t("Invite people")}</Link>
-        </div>
+        {list.premium && (
+          <div className={sharingStyles["access-next"]}>
+            <p>
+              {!visible
+                ? t(
+                    "Invite someone below to share privately now or keep this list hidden.",
+                  )
+                : isPrivate
+                  ? t(
+                      "Choose people below. Only accepted members can sign in to view this list.",
+                    )
+                  : t(
+                      "This list is public. Inviting someone does not restrict who can view it.",
+                    )}
+            </p>
+            <Link href="#invite-heading">{t("Invite people")}</Link>
+          </div>
+        )}
         {list._count.guestLinks > 0 && (
           <p className={styles.notice}>
             {t(
-              "Active guest links: {count}. Anyone with one can still view this list when it is published.",
+              "Guest links: {count}. Anyone with an active link can view when the list is available to viewers.",
               { count: list._count.guestLinks },
             )}{" "}
             <Link href={guestLinksPath(listId)}>
               {t("Review or disable guest links")}
             </Link>
           </p>
-        )}
-        {!visible && (
-          <div className={sharingStyles["access-next"]}>
-            <p>
-              {t(
-                "This list is hidden. Publish it when you are ready for your chosen audience to see it.",
-              )}
-            </p>
-            <PublicationControl id={listId} visible={false} />
-          </div>
         )}
       </section>
 
@@ -185,21 +186,12 @@ export default async function SharingPage({
             )}
           </p>
         </div>
-        <p className={styles.notice}>
-          {!visible
-            ? t(
-                "This list is hidden. Invited members can view it after you show the list.",
-              )
-            : isPrivate
-              ? t(
-                  "Invited people need to accept their invitation before viewing. Guest-link access is separate.",
-                )
-              : t(
-                  "This list is public. Invitations do not limit who can view it. Save Selected people above to restrict access.",
-                )}
-        </p>
+
         {list.premium ? (
           <InvitationForm
+            publication={list.publication}
+            visibility={list.visibility}
+            guestLinks={list._count.guestLinks}
             favorites={list.favorites}
             listId={listId}
             previousRecipients={list.previousRecipients}
@@ -258,6 +250,17 @@ export default async function SharingPage({
                             ? t("Email sent")
                             : t("Email is being sent")}
                     </p>
+                    {invitation.expiresAt > new Date() && (
+                      <p className={styles.muted}>
+                        {t(
+                          invitation.role === "ADMIN"
+                            ? "Can view and edit after accepting"
+                            : !visible
+                              ? "Viewing blocked while hidden"
+                              : "Can view after accepting",
+                        )}
+                      </p>
+                    )}
                     <p className={styles.muted}>
                       {invitation.expiresAt <= new Date()
                         ? t("Expired")
@@ -319,7 +322,7 @@ export default async function SharingPage({
           </h2>
           <p className={styles.muted}>
             {t("Manage each person’s role or remove their membership.")}
-            {list._count.memberships === 1 && (
+            {list.premium && list._count.memberships === 1 && (
               <>
                 {" "}
                 {t(
@@ -338,6 +341,7 @@ export default async function SharingPage({
               ownerId={list.ownerId}
               viewerId={user.id}
               premium={list.premium}
+              hidden={!visible}
             />
           ))}
         </ul>
@@ -398,7 +402,15 @@ export default async function SharingPage({
           <p>
             {t(
               "Guests cannot reserve gifts or edit the list. Links have an expiry date and can be disabled.",
-            )}
+            )}{" "}
+            {t(
+              !visible
+                ? "Guest links cannot open this list while it is hidden."
+                : "Anyone with an active guest link can view available wishes without signing in.",
+            )}{" "}
+            {t("Active guest links: {count}", {
+              count: list._count.guestLinks,
+            })}
           </p>
         </div>
         <Link

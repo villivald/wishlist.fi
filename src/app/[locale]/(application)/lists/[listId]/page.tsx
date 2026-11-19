@@ -19,6 +19,7 @@ import { readPremiumAccess } from "@/features/premium/service/entitlements";
 import { WishCollection } from "@/features/wish/components/wish-collection";
 import headerStyles from "@/features/wishlist/components/list-header.module.css";
 import { ListPublication } from "@/features/wishlist/components/list-publication";
+import { PublicationControl } from "@/features/wishlist/components/publication-control";
 import { readWishlist } from "@/features/wishlist/service/lists";
 import { Link } from "@/i18n/navigation";
 import { getText } from "@/i18n/server";
@@ -135,7 +136,7 @@ export default async function ListPage({
           </div>
           <div className={headerStyles.toolbar}>
             {list.canManage && <ListPublication list={list} />}
-            <div className={`${styles.actions} ${headerStyles.tools}`}>
+            <div className={headerStyles.tools}>
               <div className={headerStyles.quick}>
                 {user?.emailVerified && (
                   <FavoriteButton
@@ -150,6 +151,14 @@ export default async function ListPage({
                 )}
               </div>
               <div className={headerStyles.primary}>
+                {list.canManage && (
+                  <PublicationControl
+                    id={list.id}
+                    visible={published}
+                    visibility={list.visibility}
+                    premium={premium}
+                  />
+                )}
                 {list.canManage && (
                   <Link
                     className={`${styles["secondary-button"]} ${headerStyles["access-link"]}`}

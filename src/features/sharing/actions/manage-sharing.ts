@@ -10,6 +10,10 @@ import { authActionError } from "@/features/auth/service/action-error";
 import { limitSourceRequest } from "@/features/auth/service/request-limit";
 import { consumeRateLimit } from "@/features/auth/service/security";
 import { PremiumError } from "@/features/premium/service/entitlements";
+import {
+  ReservationReviewRequired,
+  type ReservedWish,
+} from "@/features/wishlist/service/reservation-review";
 import { redirect, revalidatePath } from "@/i18n/server-navigation";
 import {
   browsePath,
@@ -25,6 +29,7 @@ import {
   inviteMember,
   revokeInvitation,
 } from "../service/invitations";
+import { setListAccess } from "../service/list-access";
 import {
   changeMemberRole,
   removeMember,
@@ -65,6 +70,10 @@ export const sendInvitation = async (
 ) => {
   const { user, session } = await getAuthOrRedirect();
   let id: string;
+  const access = {
+    shareAccess: data.get("shareAccess") ?? "KEEP",
+    expectedAccess: data.get("expectedAccess") ?? undefined,
+  };
   try {
     await limit(user.id);
     ({ id } = await inviteMember(
@@ -72,8 +81,12 @@ export const sendInvitation = async (
       session.id,
       listId,
       data.get("recipientId")
-        ? { recipientId: data.get("recipientId"), role: data.get("role") }
-        : { email: data.get("email"), role: data.get("role") },
+        ? {
+            recipientId: data.get("recipientId"),
+            role: data.get("role"),
+            ...access,
+          }
+        : { email: data.get("email"), role: data.get("role"), ...access },
       await getLocale(),
     ));
   } catch (error) {
@@ -88,8 +101,38 @@ export const sendInvitation = async (
   refresh(listId);
   return toActionState(
     "SUCCESS",
-    "Invitation created. Delivery status is shown below.",
+    access.shareAccess === "PRIVATE"
+      ? "List shared privately and invitation created. Delivery status is shown below."
+      : "Invitation created. Delivery status is shown below.",
   );
+};
+
+type ListAccessState = ActionState & { reservationReview?: ReservedWish[] };
+
+export const changeListAccess = async (
+  listId: string,
+  _state: ListAccessState,
+  data: FormData,
+): Promise<ListAccessState> => {
+  const { user, session } = await getAuthOrRedirect();
+  try {
+    await limit(user.id);
+    confirm(data);
+    await setListAccess(user.id, session.id, listId, {
+      access: data.get("access"),
+      expectedAccess: data.get("expectedAccess"),
+      confirmedReservationIds: data.getAll("confirmedReservation"),
+    });
+  } catch (error) {
+    if (error instanceof ReservationReviewRequired)
+      return {
+        ...toActionState("REVIEW", ""),
+        reservationReview: error.reservations,
+      };
+    return actionError(error);
+  }
+  refresh(listId);
+  return toActionState("SUCCESS", "List access updated.");
 };
 
 export const cancelInvitation = async (

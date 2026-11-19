@@ -8,8 +8,10 @@ import {
 } from "@/components/form/utils/to-action-state";
 import { getAuthOrRedirect } from "@/features/auth/queries/get-auth-or-redirect";
 import { PremiumError } from "@/features/premium/service/entitlements";
+import { listAccessSchema } from "@/features/sharing/service/schemas";
 import { redirect, revalidatePath } from "@/i18n/server-navigation";
 import { browsePath, listPath, listsPath, reservationsPath } from "@/paths";
+import type { ListAccess } from "../list-access";
 import {
   createWishlist,
   deleteWishlist,
@@ -50,10 +52,21 @@ export const createList = async (_state: ActionState, data: FormData) => {
   let id: string;
 
   try {
+    const access = data.has("access")
+      ? listAccessSchema.parse(data.get("access"))
+      : undefined;
     ({ id } = await createWishlist(user.id, {
       ...listInput(data),
-      visibility: data.get("visibility") ?? "PUBLIC",
-      publication: data.get("publication") ?? "PUBLISHED",
+      visibility: access
+        ? access === "PRIVATE"
+          ? "PRIVATE"
+          : "PUBLIC"
+        : (data.get("visibility") ?? "PUBLIC"),
+      publication: access
+        ? access === "HIDDEN"
+          ? "DRAFT"
+          : "PUBLISHED"
+        : (data.get("publication") ?? "PUBLISHED"),
     }));
   } catch (error) {
     return actionError(error, data);
@@ -82,6 +95,7 @@ export const updateList = async (
 
 export type PublicationState = ActionState & {
   reservationReview?: ReservedWish[];
+  expectedAccess?: ListAccess;
 };
 
 export const changePublication = async (
@@ -92,7 +106,11 @@ export const changePublication = async (
   const { user } = await getAuthOrRedirect();
 
   let endedReservations = 0;
+  let expectedAccess: ListAccess | undefined;
   try {
+    expectedAccess = listAccessSchema
+      .optional()
+      .parse(data.get("expectedAccess") ?? undefined);
     const confirmed = z
       .array(z.string().max(200))
       .max(10000)
@@ -102,12 +120,14 @@ export const changePublication = async (
       id,
       data.get("publication"),
       confirmed,
+      expectedAccess,
     ));
   } catch (error) {
     if (error instanceof ReservationReviewRequired)
       return {
         ...toActionState("REVIEW", ""),
         reservationReview: error.reservations,
+        expectedAccess,
       };
     return actionError(error);
   }

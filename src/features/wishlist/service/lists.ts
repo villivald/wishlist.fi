@@ -4,8 +4,11 @@ import { requirePremium } from "@/features/premium/service/entitlements";
 import { wishPreviewSelection } from "@/features/wish/service/preview";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { type ListAccess, listAccess } from "../list-access";
 import { manageableLists, readableLists } from "./access";
+import { WishlistError } from "./errors";
 import { lockWishlist } from "./lock";
+import { endListReservations } from "./reservation-review";
 import {
   createWishlistSchema,
   publicationSchema,
@@ -14,14 +17,11 @@ import {
 } from "./schemas";
 import { readWishCounts } from "./wish-counts";
 
-export class WishlistError extends Error {}
-
-export type ReservedWish = { id: string; wishTitle: string };
-export class ReservationReviewRequired extends WishlistError {
-  constructor(readonly reservations: ReservedWish[]) {
-    super("Review the reserved wishes before hiding this list.");
-  }
-}
+export {
+  ReservationReviewRequired,
+  type ReservedWish,
+  WishlistError,
+} from "./errors";
 
 const listFields = {
   image: imageSelection,
@@ -187,7 +187,7 @@ export const lockManagedWishlist = async (
 
   const list = await tx.wishlist.findFirst({
     where: { id, ...manageableLists(userId) },
-    select: { id: true },
+    select: { publication: true, visibility: true },
   });
 
   if (!list) {
@@ -195,6 +195,7 @@ export const lockManagedWishlist = async (
       "This list is unavailable or you do not have permission to change it.",
     );
   }
+  return list;
 };
 
 export const updateWishlist = async (
@@ -229,31 +230,26 @@ export const setWishlistPublication = async (
   id: string,
   value: unknown,
   confirmedReservationIds: readonly string[] = [],
+  expectedAccess?: ListAccess,
 ) => {
   const publication = publicationSchema.parse(value);
 
   return prisma.$transaction(async (tx) => {
-    await lockManagedWishlist(tx, id, userId);
+    const list = await lockManagedWishlist(tx, id, userId);
+    if (expectedAccess && listAccess(list) !== expectedAccess)
+      throw new WishlistError(
+        "List access changed. Refresh this page and review it before continuing.",
+      );
 
     let endedReservations = 0;
     if (publication === "DRAFT") {
       // The same lock serializes new reservations, so a newly reserved wish
       // cannot slip through between review and the destructive update.
-      const reservations = await tx.reservation.findMany({
-        where: { wish: { wishlistId: id }, endedAt: null },
-        select: { id: true, wish: { select: { title: true } } },
-        orderBy: { id: "asc" },
-      });
-      const confirmed = new Set(confirmedReservationIds);
-      if (reservations.some(({ id }) => !confirmed.has(id)))
-        throw new ReservationReviewRequired(
-          reservations.map(({ id, wish }) => ({ id, wishTitle: wish.title })),
-        );
-      const ended = await tx.reservation.updateMany({
-        where: { wish: { wishlistId: id }, endedAt: null },
-        data: { endedAt: new Date() },
-      });
-      endedReservations = ended.count;
+      endedReservations = await endListReservations(
+        tx,
+        id,
+        confirmedReservationIds,
+      );
     }
 
     await tx.wishlist.update({ where: { id }, data: { publication } });

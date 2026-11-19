@@ -2,6 +2,11 @@ import type { TextKey } from "./text";
 
 // Codes remain stable when presentation copy changes.
 export const messageCodes = {
+  "message.list_access_changed":
+    "List access changed. Refresh this page and review it before continuing.",
+  "message.list_access_updated": "List access updated.",
+  "message.list_shared_privately_and_invitation_created":
+    "List shared privately and invitation created. Delivery status is shown below.",
   "message.username_taken": "This username is taken. Choose another.",
   "message.username_length":
     "Use 2–40 letters, numbers, underscores, or hyphens.",

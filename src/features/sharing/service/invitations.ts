@@ -4,6 +4,7 @@ import {
   readPremiumAccess,
   requirePremium,
 } from "@/features/premium/service/entitlements";
+import { listAccess } from "@/features/wishlist/list-access";
 import type { Prisma } from "@/generated/prisma/client";
 import {
   backgroundEvents,
@@ -47,6 +48,25 @@ export const inviteMember = async (
     );
     requireAdmin(role);
     await requirePremium(list.ownerId!, tx);
+    if (data.expectedAccess && data.expectedAccess !== listAccess(list))
+      throw new SharingError(
+        "List access changed. Refresh this page and review it before continuing.",
+      );
+    if (data.shareAccess === "PRIVATE") {
+      if (
+        list.publication !== "DRAFT" ||
+        data.role !== "MEMBER" ||
+        data.expectedAccess !== "HIDDEN"
+      )
+        throw new SharingError(
+          "List access changed. Refresh this page and review it before continuing.",
+        );
+      // Invitation validation and creation share this transaction; failures roll back access too.
+      await tx.wishlist.update({
+        where: { id: listId },
+        data: { publication: "PUBLISHED", visibility: "PRIVATE" },
+      });
+    }
     const favorite =
       "recipientId" in data
         ? await tx.user.findFirst({
@@ -163,7 +183,7 @@ export const readInvitation = async (id: string, userId: string) => {
       expiresAt: true,
       inviterId: true,
       wishlistId: true,
-      wishlist: { select: { ownerId: true } },
+      wishlist: { select: { ownerId: true, publication: true } },
     },
   });
   if (!invitation) return null;
@@ -182,6 +202,7 @@ export const readInvitation = async (id: string, userId: string) => {
     id: invitation.id,
     role: invitation.role,
     expiresAt: invitation.expiresAt,
+    hidden: invitation.wishlist.publication === "DRAFT",
     canAccept: access.plan === "PREMIUM",
     invitedBy: inviter.user.username,
   };

@@ -25,12 +25,14 @@ export function MemberAccess({
   ownerId,
   viewerId,
   premium,
+  hidden,
 }: {
   member: Member;
   listId: string;
   ownerId: string | null;
   viewerId: string;
   premium: boolean;
+  hidden: boolean;
 }) {
   const t = useText();
 
@@ -54,6 +56,15 @@ export function MemberAccess({
           </h3>
           <p className={styles.muted}>
             {owner ? t("Owner · Admin") : admin ? t("Admin") : t("Member")}
+          </p>
+          <p className={styles.muted}>
+            {t(
+              admin
+                ? "Can view and edit"
+                : hidden
+                  ? "Viewing blocked while hidden"
+                  : "Can view",
+            )}
           </p>
         </div>
       </div>

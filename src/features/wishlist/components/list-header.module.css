@@ -19,16 +19,19 @@
 }
 
 .toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   min-width: 0;
 }
 
 .tools {
-  margin-inline-start: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  width: 100%;
   min-width: 0;
   max-width: 100%;
 }
@@ -40,6 +43,24 @@
   align-items: center;
   gap: 1rem;
   min-width: 0;
+}
+
+.quick {
+  flex-shrink: 0;
+}
+
+.primary {
+  margin-inline-start: auto;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.primary > :is(a, button),
+.primary > div > button,
+.primary > div > form > button {
+  min-height: 48px;
+  padding: 0.65rem 0.9rem;
+  font-size: 0.875rem;
 }
 
 .short-label {
@@ -91,6 +112,9 @@
 
   .managed .primary {
     grid-area: primary;
+    width: 100%;
+    margin-inline-start: 0;
+    justify-content: flex-start;
     gap: 0.5rem;
   }
 
@@ -102,8 +126,17 @@
     font-size: 0.875rem;
   }
 
+  .managed .primary > div,
   .managed .primary > .access-link {
-    flex-basis: 100%;
+    flex: 1 1 100%;
+  }
+
+  .managed .primary > div > button,
+  .managed .primary > div > form > button {
+    width: 100%;
+    min-height: 44px;
+    padding: 0.5rem 0.625rem;
+    font-size: 0.875rem;
   }
 
   .full-label {
@@ -112,5 +145,30 @@
 
   .short-label {
     display: inline;
+  }
+}
+
+@media (width <= 400px) {
+  .managed {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "identity" "visibility" "tools";
+  }
+
+  .managed .identity picture {
+    width: min(4rem, 64px);
+  }
+
+  .managed .tools {
+    display: flex;
+    grid-area: tools;
+    gap: 8px;
+  }
+
+  .managed .primary {
+    display: contents;
+  }
+
+  .managed .primary > div {
+    flex: 1 1 8rem;
   }
 }
