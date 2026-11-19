@@ -22,7 +22,23 @@ export async function GoogleOption({
     <div
       className={`${styles.option}${intent === "connect" ? ` ${styles.compact}` : ""}`}
     >
-      <form method="post" action={`/api/auth/google/start?${query}`}>
+      <form
+        method="post"
+        action={`/api/auth/google/start?${query}`}
+        className={intent === "connect" ? shell.form : undefined}
+      >
+        {intent === "connect" && (
+          <label className={shell.field}>
+            {t("Current password")}
+            <input
+              type="password"
+              name="password"
+              autoComplete="current-password"
+              maxLength={128}
+              required
+            />
+          </label>
+        )}
         <button type="submit" className={styles.button}>
           <Image
             src="/google-g.png"

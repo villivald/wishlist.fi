@@ -11,7 +11,11 @@ import {
   deleteAccount,
   readDeletionImpact,
 } from "@/features/account/service/account";
-import { authenticate, verifyEmail } from "@/features/auth/service/accounts";
+import {
+  authenticate,
+  resetPassword,
+  verifyEmail,
+} from "@/features/auth/service/accounts";
 import {
   consumeGoogleRequest,
   createGoogleRequest,
@@ -82,11 +86,16 @@ describe("Google account and session invariants", () => {
     await expect(finishGoogleSignIn(sameEmail, signIn)).rejects.toMatchObject({
       code: "link-required",
     });
-    const connect = {
-      ...signIn,
+    const started = await createGoogleRequest({
+      locale: "fi",
       intent: "connect",
       sessionId: login.session.id,
-    };
+      password: accounts.owner.password,
+    });
+    const connect = await consumeGoogleRequest(started.state, started.state);
+    await expect(
+      consumeGoogleRequest(started.state, started.state),
+    ).rejects.toThrow();
     await expect(
       finishGoogleSignIn(sameEmail, connect, "wrong-session"),
     ).rejects.toThrow();
@@ -179,6 +188,64 @@ describe("Google account and session invariants", () => {
       await prisma.authIdentity.count({ where: { subject: identity.subject } }),
     ).toBe(0);
     expect((await validateSession(fresh.token)).user).toBeNull();
+  });
+  it("a stolen session cannot plant a Google identity before or after password recovery", async () => {
+    const login = await authenticate(
+      accounts.owner.email,
+      accounts.owner.password,
+    );
+    await expect(
+      createGoogleRequest({
+        locale: "en",
+        intent: "connect",
+        sessionId: login.session.id,
+      }),
+    ).rejects.toThrow();
+    await expect(
+      createGoogleRequest({
+        locale: "en",
+        intent: "connect",
+        sessionId: login.session.id,
+        password: "Attacker-password!",
+      }),
+    ).rejects.toThrow();
+    // Requests issued before this fix have no credential confirmation.
+    await expect(
+      finishGoogleSignIn(
+        identity,
+        {
+          ...signIn,
+          intent: "connect",
+          sessionId: login.session.id,
+        },
+        login.session.id,
+      ),
+    ).rejects.toThrow();
+    const started = await createGoogleRequest({
+      locale: "en",
+      intent: "connect",
+      sessionId: login.session.id,
+      password: accounts.owner.password,
+    });
+    const resetToken = "fixture-password-reset";
+    await prisma.passwordResetToken.create({
+      data: {
+        userId: login.user.id,
+        tokenHash: hashToken(resetToken),
+        expiresAt: new Date(Date.now() + 60_000),
+      },
+    });
+    await resetPassword(resetToken, "New-owner-password!");
+    const flow = await consumeGoogleRequest(started.state, started.state);
+    await expect(
+      finishGoogleSignIn(identity, flow, login.session.id),
+    ).rejects.toThrow();
+    expect(
+      await prisma.authIdentity.count({ where: { userId: login.user.id } }),
+    ).toBe(0);
+    expect((await validateSession(login.token)).user).toBeNull();
+    const googleLogin = await finishGoogleSignIn(identity, signIn);
+    expect(googleLogin.user.id).not.toBe(login.user.id);
   });
   it("revoked sessions cannot connect identities", async () => {
     const login = await authenticate(
