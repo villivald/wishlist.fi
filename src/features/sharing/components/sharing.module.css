@@ -180,6 +180,13 @@
   justify-self: start;
 }
 
+.audience-review button[type="submit"]:disabled {
+  border-color: var(--border);
+  background: var(--muted);
+  color: var(--muted-foreground);
+  opacity: 1;
+}
+
 .access-next {
   display: flex;
   flex-wrap: wrap;

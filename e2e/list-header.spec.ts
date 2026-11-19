@@ -218,7 +218,15 @@ for (const locale of ["en", "fi"] as const) {
         name: fi ? "Kutsutut henkilöt" : "Invited people",
         exact: true,
       });
+      const makePublic = dialog.getByRole("button", {
+        name: fi ? "Tee listasta julkinen" : "Make list public",
+        exact: true,
+      });
+      await expect(makePublic).toBeDisabled();
+      await dialog.getByRole("checkbox").check();
+      await expect(makePublic).toBeEnabled();
       await selected.check();
+      await expect(dialog.getByRole("checkbox")).not.toBeChecked();
       await page.keyboard.press("Escape");
       await expect(dialog).not.toBeVisible();
       await expect(publish).toBeFocused();
@@ -238,8 +246,7 @@ for (const locale of ["en", "fi"] as const) {
         name: fi ? "Jaa kutsutuille henkilöille" : "Share with invited people",
         exact: true,
       });
-      await save.click();
-      await expect(dialog.getByRole("checkbox")).toBeFocused();
+      await expect(save).toBeDisabled();
       expect(
         (await db.wishlist.findUniqueOrThrow({ where: { id: listId } }))
           .publication,

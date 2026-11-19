@@ -201,6 +201,64 @@ describe("group reservations", () => {
     ).not.toContain(guest);
   });
 
+  it("invites by exact verified email and applies the same list access and duplicate rules", async () => {
+    await membership(organizer);
+    await makePrivate();
+    const byEmail = (email: string) =>
+      inviteToReservation(organizer, id, { email });
+    for (const email of [
+      "unknown@example.test",
+      "e2e-hidden@example.test",
+      "e2e-unverified@example.test",
+    ]) {
+      await expect(byEmail(email)).rejects.toThrow(
+        "This address cannot receive a group invitation",
+      );
+    }
+    expect(
+      await prisma.reservationParticipant.count({
+        where: { reservationId: id },
+      }),
+    ).toBe(0);
+    await byEmail("  E2E-GUEST@EXAMPLE.TEST  ");
+    expect(
+      (await readReservationGroup(organizer, id))?.invitations.map(
+        (person) => person.id,
+      ),
+    ).toEqual([guest]);
+    await expect(invite(guest)).rejects.toThrow("already been invited");
+  });
+
+  it("shows only the organizer’s eligible favorites and removes previously invited people", async () => {
+    for (const userId of [guest, second]) {
+      await prisma.wishlist.create({
+        data: {
+          title: userId,
+          id: `e2e-favorite-list-${userId}`,
+          ownerId: userId,
+          memberships: { create: { userId, role: "ADMIN" } },
+          publication: "PUBLISHED",
+          visibility: "PUBLIC",
+        },
+      });
+      await prisma.favoritePerson.create({
+        data: { userId: organizer, personId: userId },
+      });
+    }
+    await membership(organizer);
+    await makePrivate();
+    await prisma.membership.delete({
+      where: { wishlistId_userId: { wishlistId: listId, userId: second } },
+    });
+    const favorites = (await readReservationGroup(organizer, id))?.favorites;
+    expect(favorites?.map((person) => person.id)).toEqual([guest]);
+    expect(favorites?.[0]).not.toHaveProperty("email");
+    await invite();
+    expect((await readReservationGroup(guest, id))?.favorites).toEqual([]);
+    await respondToReservation(guest, id, false);
+    expect((await readReservationGroup(organizer, id))?.favorites).toEqual([]);
+  });
+
   it("returns public avatars without exposing private members' media", async () => {
     await prisma.media.deleteMany({
       where: { id: { startsWith: "e2e-group-avatar-" } },

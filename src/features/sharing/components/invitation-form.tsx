@@ -1,5 +1,5 @@
 "use client";
-import { Check, Mail, Star } from "lucide-react";
+import { Check, Mail } from "lucide-react";
 import { useActionState, useId, useRef, useState } from "react";
 import { ActionFeedback } from "@/components/form/action-feedback";
 import type { ActionState } from "@/components/form/utils/to-action-state";
@@ -8,11 +8,17 @@ import styles from "@/components/shell.module.css";
 import { type ListAccess, listAccess } from "@/features/wishlist/list-access";
 import { useText } from "@/i18n/use-text";
 import { sendInvitation } from "../actions/manage-sharing";
+import {
+  type FavoriteRecipient,
+  FavoriteRecipients,
+} from "./favorite-recipients";
 import sharingStyles from "./sharing.module.css";
 
 type Recipient = { email: string; username: string };
-type Favorite = { id: string; name: string | null; username: string };
-type Suggestions = { favorites: Favorite[]; previousRecipients: Recipient[] };
+type Suggestions = {
+  favorites: FavoriteRecipient[];
+  previousRecipients: Recipient[];
+};
 type Access = { access: ListAccess; guestLinks: number };
 
 export function InvitationForm({
@@ -94,45 +100,14 @@ function InvitationFields({
       <legend className={styles["visually-hidden"]}>
         {t("Invite people")}
       </legend>
-      {favorites.length > 0 && (
-        <div className={sharingStyles.suggestions}>
-          <p id={`${id}-favorites`}>
-            <Star size={18} aria-hidden="true" /> {t("From your favorites")}
-          </p>
-          <div role="group" aria-labelledby={`${id}-favorites`}>
-            {favorites.map((person) => (
-              <button
-                key={person.id}
-                type="button"
-                aria-pressed={selected?.id === person.id}
-                className={sharingStyles.recipient}
-                onClick={() => {
-                  setRecipientId(selected?.id === person.id ? "" : person.id);
-                  setEmail("");
-                }}
-              >
-                <span className={sharingStyles.avatar} aria-hidden="true">
-                  {(person.name ?? person.username)
-                    .slice(0, 1)
-                    .toLocaleUpperCase(t.locale)}
-                </span>
-                <span className={sharingStyles["recipient-identity"]}>
-                  <strong>{person.name ?? person.username}</strong>
-                  <span>@{person.username}</span>
-                </span>
-                {selected?.id === person.id && (
-                  <Check size={18} aria-hidden="true" />
-                )}
-              </button>
-            ))}
-          </div>
-          <p className={styles["field-help"]}>
-            {t(
-              "Choose a person, then send an invitation. Their email address stays private.",
-            )}
-          </p>
-        </div>
-      )}
+      <FavoriteRecipients
+        favorites={favorites}
+        selectedId={selected?.id}
+        onSelect={(person) => {
+          setRecipientId(person?.id ?? "");
+          setEmail("");
+        }}
+      />
       {previousRecipients.length > 0 && (
         <div className={sharingStyles.suggestions}>
           <p id={`${id}-suggestions`}>{t("Previously invited by you")}</p>

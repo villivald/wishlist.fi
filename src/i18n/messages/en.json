@@ -881,7 +881,6 @@
   "{name} invited you to reserve a gift together on Wishlist.": "{name} invited you to reserve a gift together on Wishlist.",
   "{name} accepted your group reservation invitation.": "{name} accepted your group reservation invitation.",
   "Open the group to see its current members and coordinate the gift. No payment is collected.": "Open the group to see its current members and coordinate the gift. No payment is collected.",
-  "Search public profiles or list members. Invitations expire after seven days. We email invitees and notify you by email when they join.": "Search public profiles or list members. Invitations expire after seven days. We email invitees and notify you by email when they join.",
   "Hidden lists and hidden, fulfilled, or reserved wishes do not appear in Browse. Reserved wishes are visible to the organizer, accepted group participants, and list admins. Group members share their names and usernames with each other; list admins do not see the roster unless they join.": "Hidden lists and hidden, fulfilled, or reserved wishes do not appear in Browse. Reserved wishes are visible to the organizer, accepted group participants, and list admins. Group members share their names and usernames with each other; list admins do not see the roster unless they join.",
   "Account information, a password hash, session and recovery records, lists, wishes, uploaded images, memberships, invitations, reservations, and Premium records support the features you use. Account emails, group invitations, and acceptance notifications are delivered through the configured email service. The app does not store payment-card details; checkout is handled by Paddle when enabled.": "Account information, a password hash, session and recovery records, lists, wishes, uploaded images, memberships, invitations, reservations, and Premium records support the features you use. Account emails, group invitations, and acceptance notifications are delivered through the configured email service. The app does not store payment-card details; checkout is handled by Paddle when enabled.",
   "Group invitation": "Group invitation",
@@ -1267,5 +1266,10 @@
   "They can open the list after accepting. It stays out of Browse.": "They can open the list after accepting. It stays out of Browse.",
   "Admins can open and edit this list even when it is hidden.": "Admins can open and edit this list even when it is hidden.",
   "Anyone can already view this list. Accepting the invitation adds them as a member.": "Anyone can already view this list. Accepting the invitation adds them as a member.",
-  "They can open this list with their account after accepting.": "They can open this list with their account after accepting."
+  "They can open this list with their account after accepting.": "They can open this list with their account after accepting.",
+  "Search by name": "Search by name",
+  "This address cannot receive a group invitation. Check the address and that the person can access the list.": "This address cannot receive a group invitation. Check the address and that the person can access the list.",
+  "Use the verified email address of someone who already belongs to this private list.": "Use the verified email address of someone who already belongs to this private list.",
+  "Use the verified email address of a list member or someone with a public profile.": "Use the verified email address of a list member or someone with a public profile.",
+  "Invitations expire after seven days. We email each person you invite and let you know when they join.": "Invitations expire after seven days. We email each person you invite and let you know when they join."
 }

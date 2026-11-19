@@ -1,5 +1,7 @@
+import { Mail } from "lucide-react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import managementStyles from "@/components/list-management.module.css";
 import styles from "@/components/shell.module.css";
 import { getAuthOrRedirect } from "@/features/auth/queries/get-auth-or-redirect";
 import { GroupAction } from "@/features/reservation/components/group-controls";
@@ -10,6 +12,7 @@ import {
   GROUP_LIMIT,
   readReservationGroup,
 } from "@/features/reservation/service/groups";
+import sharingStyles from "@/features/sharing/components/sharing.module.css";
 import { WishPriority } from "@/features/wish/components/wish-priority";
 import { formatWishPrice } from "@/features/wish/utils/money";
 import { Link } from "@/i18n/navigation";
@@ -173,15 +176,23 @@ export default async function GroupPage({
           </section>
           {group.organizer && (
             <section
-              className={groupStyles.panel}
+              className={managementStyles.panel}
               aria-labelledby="group-invite-heading"
             >
-              <h2 id="group-invite-heading">{t("Invite people")}</h2>
-              <p className={styles.muted}>
-                {t(
-                  "Search public profiles or list members. Invitations expire after seven days. We email invitees and notify you by email when they join.",
-                )}
-              </p>
+              <div className={managementStyles.heading}>
+                <h2
+                  id="group-invite-heading"
+                  className={sharingStyles["section-title"]}
+                >
+                  <Mail size={21} aria-hidden="true" />
+                  <span>{t("Invite people")}</span>
+                </h2>
+                <p className={styles.muted}>
+                  {t(
+                    "Invitations expire after seven days. We email each person you invite and let you know when they join.",
+                  )}
+                </p>
+              </div>
               <p>
                 {t(
                   "{count} of 10 places used, including pending invitations.",
@@ -192,6 +203,8 @@ export default async function GroupPage({
                 <PeoplePicker
                   key={group.invitations.map((person) => person.id).join(":")}
                   reservationId={group.id}
+                  favorites={group.favorites}
+                  privateList={group.wish.wishlist.visibility === "PRIVATE"}
                 />
               )}
               {!!group.invitations.length && (

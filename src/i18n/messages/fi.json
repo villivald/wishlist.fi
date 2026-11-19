@@ -881,7 +881,6 @@
   "{name} invited you to reserve a gift together on Wishlist.": "{name} kutsui sinut varaamaan lahjan yhdessä Wishlistissä.",
   "{name} accepted your group reservation invitation.": "{name} hyväksyi kutsusi ryhmävaraukseen.",
   "Open the group to see its current members and coordinate the gift. No payment is collected.": "Avaa ryhmä nähdäksesi sen nykyiset jäsenet ja sopiaksesi lahjan järjestämisestä. Maksuja ei kerätä.",
-  "Search public profiles or list members. Invitations expire after seven days. We email invitees and notify you by email when they join.": "Hae julkisia profiileja tai listan jäseniä. Kutsut vanhenevat seitsemässä päivässä. Lähetämme kutsutuille sähköpostin ja ilmoitamme sinulle sähköpostitse, kun he liittyvät.",
   "Hidden lists and hidden, fulfilled, or reserved wishes do not appear in Browse. Reserved wishes are visible to the organizer, accepted group participants, and list admins. Group members share their names and usernames with each other; list admins do not see the roster unless they join.": "Piilotetut listat sekä piilotetut, toteutuneet tai varatut toiveet eivät näy Selaa-näkymässä. Varatut toiveet näkyvät järjestäjälle, ryhmään liittyneille osallistujille ja listan ylläpitäjille. Ryhmän jäsenet jakavat nimensä ja käyttäjänimensä toisilleen. Listan ylläpitäjät eivät näe jäsenluetteloa, elleivät he liity ryhmään.",
   "Account information, a password hash, session and recovery records, lists, wishes, uploaded images, memberships, invitations, reservations, and Premium records support the features you use. Account emails, group invitations, and acceptance notifications are delivered through the configured email service. The app does not store payment-card details; checkout is handled by Paddle when enabled.": "Tilitiedot, salasanan tiiviste, istunto- ja palautustiedot, listat, toiveet, ladatut kuvat, jäsenyydet, kutsut, varaukset ja Premium-tiedot tukevat käyttämiäsi toimintoja. Tilisähköpostit, ryhmäkutsut ja hyväksymisilmoitukset toimitetaan määritetyn sähköpostipalvelun kautta. Sovellus ei tallenna maksukorttitietoja. Paddle hoitaa maksamisen, kun se on käytössä.",
   "Group invitation": "Ryhmäkutsu",
@@ -1267,5 +1266,10 @@
   "They can open the list after accepting. It stays out of Browse.": "Kutsun hyväksynyt voi avata listan. Lista ei näy Selaa-sivulla.",
   "Admins can open and edit this list even when it is hidden.": "Ylläpitäjät voivat avata listan ja muokata sitä myös piilotettuna.",
   "Anyone can already view this list. Accepting the invitation adds them as a member.": "Kuka tahansa voi jo katsella listaa. Kutsun hyväksyminen lisää kutsutun jäseneksi.",
-  "They can open this list with their account after accepting.": "Kutsun hyväksynyt voi avata listan omalla tilillään."
+  "They can open this list with their account after accepting.": "Kutsun hyväksynyt voi avata listan omalla tilillään.",
+  "Search by name": "Hae nimellä",
+  "This address cannot receive a group invitation. Check the address and that the person can access the list.": "Tähän osoitteeseen ei voi lähettää ryhmäkutsua. Tarkista osoite ja varmista, että henkilö pääsee listalle.",
+  "Use the verified email address of someone who already belongs to this private list.": "Anna tähän yksityiseen listaan kuuluvan henkilön vahvistettu sähköpostiosoite.",
+  "Use the verified email address of a list member or someone with a public profile.": "Anna listan jäsenen tai julkisen profiilin omistajan vahvistettu sähköpostiosoite.",
+  "Invitations expire after seven days. We email each person you invite and let you know when they join.": "Kutsu on voimassa seitsemän päivää. Lähetämme kutsun sähköpostitse ja ilmoitamme sinulle, kun kutsuttu liittyy ryhmään."
 }

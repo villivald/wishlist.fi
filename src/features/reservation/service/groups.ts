@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { emailSchema } from "@/features/auth/service/schemas";
 import { consumeRateLimit, lockUser } from "@/features/auth/service/security";
 import { publicOwners } from "@/features/discovery/service/access";
 import { imageSelection } from "@/features/media/types";
@@ -38,14 +39,15 @@ const accessibleWish = (userId: string): Prisma.WishWhereInput => ({
 const changeGroup = async <T>(
   userId: string,
   reservationId: string,
-  targetId: string | null,
+  target: string | { email: string } | null,
   change: (
     tx: Prisma.TransactionClient,
     group: NonNullable<Awaited<ReturnType<typeof lockedGroup>>>,
+    targetId: string | null,
   ) => Promise<T>,
 ) => {
   wishlistIdSchema.parse(reservationId);
-  if (targetId) wishlistIdSchema.parse(targetId);
+  if (typeof target === "string") wishlistIdSchema.parse(target);
   await consumeRateLimit(
     "reservation-group-change",
     userId,
@@ -54,13 +56,22 @@ const changeGroup = async <T>(
   );
   return prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT pg_advisory_xact_lock_shared(8108, 1)::text`;
+    const targetId =
+      target && typeof target === "object"
+        ? ((
+            await tx.user.findUnique({
+              where: { email: target.email },
+              select: { id: true },
+            })
+          )?.id ?? null)
+        : target;
     for (const id of [
       ...new Set([userId, ...(targetId ? [targetId] : [])]),
     ].sort())
       await lockUser(tx, id);
     await verifyActor(tx, userId);
     const group = await lockedGroup(tx, userId, reservationId);
-    return change(tx, group);
+    return change(tx, group, targetId);
   });
 };
 
@@ -126,6 +137,17 @@ const eligiblePeople = (
   ],
 });
 
+const availableGroupRecipients = (
+  userId: string,
+  reservationId: string,
+  listId: string,
+  visibility: string,
+): Prisma.UserWhereInput => ({
+  ...eligiblePeople(listId, visibility),
+  id: { not: userId },
+  reservationParticipants: { none: { reservationId } },
+});
+
 export const searchGroupPeople = async (
   userId: string,
   reservationId: string,
@@ -164,12 +186,12 @@ export const searchGroupPeople = async (
       if (!group || !group.wish.wishlist.reservationsEnabled) return [];
       const people = await tx.user.findMany({
         where: {
-          ...eligiblePeople(
+          ...availableGroupRecipients(
+            userId,
+            reservationId,
             group.wish.wishlistId,
             group.wish.wishlist.visibility,
           ),
-          id: { not: userId },
-          reservationParticipants: { none: { reservationId } },
           OR: [
             { username: { contains: query.data, mode: "insensitive" } },
             { name: { contains: query.data, mode: "insensitive" } },
@@ -212,20 +234,30 @@ export const searchGroupPeople = async (
 export const inviteToReservation = async (
   userId: string,
   reservationId: string,
-  targetId: string,
+  recipient: string | { email: string },
 ) => {
+  const target =
+    typeof recipient === "string"
+      ? recipient
+      : { email: emailSchema.parse(recipient.email) };
   const emailId = await changeGroup(
     userId,
     reservationId,
-    targetId,
-    async (tx, group) => {
+    target,
+    async (tx, group, targetId) => {
       requireOrganizer(group, userId);
       requireEnabled(group.wish.wishlist.reservationsEnabled);
-      if (!group.groupEnabled || targetId === userId)
-        throw new ReservationError(unavailable);
+      if (!group.groupEnabled) throw new ReservationError(unavailable);
+      const recipientUnavailable =
+        typeof target === "string"
+          ? unavailable
+          : "This address cannot receive a group invitation. Check the address and that the person can access the list.";
+      if (!targetId || targetId === userId)
+        throw new ReservationError(recipientUnavailable);
       const person = await tx.user.findFirst({
         where: {
           id: targetId,
+          ...(typeof target === "string" ? {} : { email: target.email }),
           ...eligiblePeople(
             group.wish.wishlistId,
             group.wish.wishlist.visibility,
@@ -233,7 +265,7 @@ export const inviteToReservation = async (
         },
         select: { id: true },
       });
-      if (!person) throw new ReservationError(unavailable);
+      if (!person) throw new ReservationError(recipientUnavailable);
       const existing = await tx.reservationParticipant.findUnique({
         where: { reservationId_userId: { reservationId, userId: targetId } },
         select: { id: true },
@@ -431,7 +463,13 @@ export const readReservationGroup = async (
               currency: true,
               priority: true,
               wishlistId: true,
-              wishlist: { select: { title: true, reservationsEnabled: true } },
+              wishlist: {
+                select: {
+                  title: true,
+                  visibility: true,
+                  reservationsEnabled: true,
+                },
+              },
             },
           },
         },
@@ -481,13 +519,37 @@ export const readReservationGroup = async (
       const accepted = group.participants.filter(
         (p) => p.status === "ACCEPTED",
       );
+      const occupied = group.participants.length + 1;
+      const favorites =
+        organizer &&
+        group.wish.wishlist.reservationsEnabled &&
+        occupied < GROUP_LIMIT
+          ? await tx.favoritePerson.findMany({
+              where: {
+                userId,
+                person: {
+                  ...publicOwners,
+                  ...availableGroupRecipients(
+                    userId,
+                    reservationId,
+                    group.wish.wishlistId,
+                    group.wish.wishlist.visibility,
+                  ),
+                },
+              },
+              select: { person: { select: profile } },
+              orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+              take: 12,
+            })
+          : [];
       return {
+        favorites: favorites.map(({ person }) => person),
         id: group.id,
         wish: group.wish,
         organizer,
         pending,
         size: accepted.length + 1,
-        occupied: group.participants.length + 1,
+        occupied,
         // Pending recipients see only the inviter, never the accepted roster.
         inviter:
           pending && own?.inviter

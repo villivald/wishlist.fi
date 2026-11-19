@@ -98,7 +98,11 @@ export const manageGroup = async (
     const operation = operationSchema.parse(data.get("operation"));
     const targetId = String(data.get("targetId") ?? "");
     if (operation === "invite")
-      await inviteToReservation(user.id, reservationId, targetId);
+      await inviteToReservation(
+        user.id,
+        reservationId,
+        targetId || { email: String(data.get("email") ?? "") },
+      );
     if (operation === "accept" || operation === "decline") {
       if (operation === "accept") consent(data);
       await respondToReservation(

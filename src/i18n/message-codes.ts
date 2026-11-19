@@ -23,6 +23,8 @@ export const messageCodes = {
     "Please complete the security check and try again.",
   "message.please_wait_before_requesting_another_email_check_your_inbox_and_spam_folder":
     "Please wait before requesting another email. Check your inbox and spam folder.",
+  "message.group_recipient_unavailable":
+    "This address cannot receive a group invitation. Check the address and that the person can access the list.",
   "message.group_unavailable":
     "This group is unavailable or you no longer have access.",
   "message.group_disabled":

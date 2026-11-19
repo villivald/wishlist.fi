@@ -4,6 +4,10 @@ import { Search, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import styles from "@/components/shell.module.css";
 import { MediaImage } from "@/features/media/components/media-image";
+import {
+  type FavoriteRecipient,
+  FavoriteRecipients,
+} from "@/features/sharing/components/favorite-recipients";
 import { useText } from "@/i18n/use-text";
 import { searchPeople } from "../actions/search-people";
 import { GroupAction } from "./group-controls";
@@ -30,10 +34,20 @@ function PersonIdentity({ person }: { person: Person }) {
   );
 }
 
-export function PeoplePicker({ reservationId }: { reservationId: string }) {
+export function PeoplePicker({
+  reservationId,
+  favorites,
+  privateList,
+}: {
+  reservationId: string;
+  favorites: FavoriteRecipient[];
+  privateList: boolean;
+}) {
   const t = useText();
   const id = useId();
   const input = useRef<HTMLInputElement>(null);
+  const emailInput = useRef<HTMLInputElement>(null);
+  const [email, setEmail] = useState("");
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
@@ -72,8 +86,9 @@ export function PeoplePicker({ reservationId }: { reservationId: string }) {
   }, [trimmed, reservationId, selected]);
 
   const choose = (person: Person) => {
+    setEmail("");
     setSelected(person);
-    setQuery(person.username);
+    setQuery(person.name ?? person.username);
     setOpen(false);
     setActive(-1);
     input.current?.focus();
@@ -89,131 +104,189 @@ export function PeoplePicker({ reservationId }: { reservationId: string }) {
           );
 
   return (
-    <div
-      className={groupStyles.picker}
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
-      }}
-    >
-      <div className={styles.field}>
-        <label htmlFor={id}>{t("Name or username")}</label>
-        <div className={groupStyles["search-input"]}>
-          <Search size={20} aria-hidden="true" />
+    <div className={groupStyles.picker}>
+      <GroupAction
+        id={reservationId}
+        operation="invite"
+        targetId={selected?.id}
+        label={
+          selected
+            ? t("Invite {name}", { name: selected.name ?? selected.username })
+            : t("Send invitation")
+        }
+      >
+        <FavoriteRecipients
+          favorites={favorites}
+          selectedId={selected?.id}
+          onSelect={(person) => {
+            setSelected(person ? { ...person, image: null } : null);
+            setEmail("");
+            setQuery("");
+            setOpen(false);
+            setActive(-1);
+          }}
+        />
+        <div className={styles.field}>
+          <label htmlFor={`${id}-email`}>
+            {favorites.length ? t("Or invite by email") : t("Invitation email")}
+          </label>
           <input
-            ref={input}
-            id={id}
-            role="combobox"
-            type="text"
+            id={`${id}-email`}
+            ref={emailInput}
+            name="email"
+            type="email"
             autoComplete="off"
-            maxLength={80}
-            placeholder={t("Type a name to find people…")}
-            value={query}
-            aria-autocomplete="list"
-            aria-expanded={expanded}
-            aria-controls={expanded ? `${id}-results` : undefined}
-            aria-activedescendant={
-              expanded && people[active]
-                ? `${id}-person-${people[active].id}`
-                : undefined
-            }
-            aria-describedby={`${id}-help`}
-            onFocus={() => setOpen(true)}
+            spellCheck={false}
+            required={!selected}
+            maxLength={254}
+            aria-describedby={`${id}-email-help`}
+            value={email}
             onChange={(event) => {
-              setQuery(event.target.value);
+              setEmail(event.target.value);
               setSelected(null);
+              setQuery("");
+              setOpen(false);
               setActive(-1);
-              setOpen(true);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                setOpen(false);
-                setActive(-1);
-              }
-              if (
-                (event.key === "ArrowDown" || event.key === "ArrowUp") &&
-                ready &&
-                !selected
-              ) {
-                event.preventDefault();
-                setOpen(true);
-                const index =
-                  event.key === "ArrowDown"
-                    ? Math.min(active + 1, people.length - 1)
-                    : Math.max(active - 1, 0);
-                setActive(index);
-                if (people[index])
-                  document
-                    .getElementById(`${id}-person-${people[index].id}`)
-                    ?.scrollIntoView({ block: "nearest" });
-              }
-              if (event.key === "Enter" && expanded && people[active]) {
-                event.preventDefault();
-                choose(people[active]);
-              }
             }}
           />
-        </div>
-        <p id={`${id}-help`} className={styles["field-help"]}>
-          {t(
-            "Type at least two characters, then select a person and send an invitation.",
-          )}
-        </p>
-      </div>
-      {expanded && (
-        <div className={groupStyles.results}>
-          <p role="status" className={groupStyles["search-status"]}>
-            {status}
+          <p id={`${id}-email-help`} className={styles["field-help"]}>
+            {privateList
+              ? t(
+                  "Use the verified email address of someone who already belongs to this private list.",
+                )
+              : t(
+                  "Use the verified email address of a list member or someone with a public profile.",
+                )}
           </p>
-          <ul
-            id={`${id}-results`}
-            role="listbox"
-            aria-label={t("People to invite")}
-            aria-busy={loading}
-          >
-            {people.map((person, index) => (
-              <li
-                key={person.id}
-                id={`${id}-person-${person.id}`}
-                role="option"
-                tabIndex={-1}
-                aria-selected={active === index}
-                onPointerDown={(event) => {
-                  if (event.pointerType === "mouse") event.preventDefault();
+        </div>
+        <details
+          className={styles.disclosure}
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget))
+              setOpen(false);
+          }}
+        >
+          <summary>{t("Search by name")}</summary>
+          <div className={styles.field}>
+            <label htmlFor={id}>{t("Name or username")}</label>
+            <div className={groupStyles["search-input"]}>
+              <Search size={20} aria-hidden="true" />
+              <input
+                ref={input}
+                id={id}
+                role="combobox"
+                type="text"
+                autoComplete="off"
+                maxLength={80}
+                placeholder={t("Type a name to find people…")}
+                value={query}
+                aria-autocomplete="list"
+                aria-expanded={expanded}
+                aria-controls={expanded ? `${id}-results` : undefined}
+                aria-activedescendant={
+                  expanded && people[active]
+                    ? `${id}-person-${people[active].id}`
+                    : undefined
+                }
+                aria-describedby={`${id}-help`}
+                onFocus={() => setOpen(true)}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setEmail("");
+                  setSelected(null);
+                  setActive(-1);
+                  setOpen(true);
                 }}
-                onClick={() => choose(person)}
-              >
-                <PersonIdentity person={person} />
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {selected && (
-        <div className={groupStyles.selection}>
-          <div className={groupStyles["selected-person"]}>
-            <PersonIdentity person={selected} />
-            <button
-              type="button"
-              className={groupStyles.clear}
-              aria-label={t("Clear selection")}
-              onClick={() => {
-                setSelected(null);
-                setQuery("");
-                setActive(-1);
-                input.current?.focus();
-              }}
-            >
-              <X size={20} aria-hidden="true" />
-            </button>
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    setOpen(false);
+                    setActive(-1);
+                  }
+                  if (
+                    (event.key === "ArrowDown" || event.key === "ArrowUp") &&
+                    ready &&
+                    !selected
+                  ) {
+                    event.preventDefault();
+                    setOpen(true);
+                    const index =
+                      event.key === "ArrowDown"
+                        ? Math.min(active + 1, people.length - 1)
+                        : Math.max(active - 1, 0);
+                    setActive(index);
+                    if (people[index])
+                      document
+                        .getElementById(`${id}-person-${people[index].id}`)
+                        ?.scrollIntoView({ block: "nearest" });
+                  }
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    if (expanded && people[active]) choose(people[active]);
+                  }
+                }}
+              />
+            </div>
+            <p id={`${id}-help`} className={styles["field-help"]}>
+              {t(
+                "Type at least two characters, then select a person and send an invitation.",
+              )}
+            </p>
           </div>
-          <GroupAction
-            id={reservationId}
-            operation="invite"
-            targetId={selected.id}
-            label={t("Invite {name}", { name: selected.username })}
-          />
-        </div>
-      )}
+          {expanded && (
+            <div className={groupStyles.results}>
+              <p role="status" className={groupStyles["search-status"]}>
+                {status}
+              </p>
+              <ul
+                id={`${id}-results`}
+                role="listbox"
+                aria-label={t("People to invite")}
+                aria-busy={loading}
+              >
+                {people.map((person, index) => (
+                  <li
+                    key={person.id}
+                    id={`${id}-person-${person.id}`}
+                    role="option"
+                    tabIndex={-1}
+                    aria-selected={active === index}
+                    onPointerDown={(event) => {
+                      if (event.pointerType === "mouse") event.preventDefault();
+                    }}
+                    onClick={() => choose(person)}
+                  >
+                    <PersonIdentity person={person} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </details>
+        {selected &&
+          !favorites.some((favorite) => favorite.id === selected.id) && (
+            <div className={groupStyles.selection}>
+              <div className={groupStyles["selected-person"]}>
+                <PersonIdentity person={selected} />
+                <button
+                  type="button"
+                  className={groupStyles.clear}
+                  aria-label={t("Clear selection")}
+                  onClick={() => {
+                    setSelected(null);
+                    setQuery("");
+                    setActive(-1);
+                    (input.current?.closest("details")?.open
+                      ? input.current
+                      : emailInput.current
+                    )?.focus();
+                  }}
+                >
+                  <X size={20} aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+          )}
+      </GroupAction>
     </div>
   );
 }

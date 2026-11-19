@@ -37,10 +37,13 @@ export function ListAccessControl({
   const [selection, setSelection] = useState({
     current,
     value: initialAccess ?? current,
+    confirmed: false,
   });
-  if (selection.current !== current) setSelection({ current, value: current });
+  if (selection.current !== current)
+    setSelection({ current, value: current, confirmed: false });
   const selected = selection.value;
-  const setSelected = (value: ListAccess) => setSelection({ current, value });
+  const setSelected = (value: ListAccess) =>
+    setSelection({ current, value, confirmed: false });
   const [state, action, pending] = useActionState(
     changeListAccess.bind(null, listId),
     {
@@ -116,7 +119,20 @@ export function ListAccessControl({
                 </p>
               )}
               <label className={styles["checkbox-label"]} key={selected}>
-                <input type="checkbox" name="confirm" value="yes" required />
+                <input
+                  type="checkbox"
+                  name="confirm"
+                  value="yes"
+                  required
+                  checked={selection.confirmed}
+                  onChange={(event) =>
+                    setSelection({
+                      current,
+                      value: selected,
+                      confirmed: event.target.checked,
+                    })
+                  }
+                />
                 {confirmation}
               </label>
               {selected === "PRIVATE" &&
@@ -129,10 +145,14 @@ export function ListAccessControl({
                     )}
                   </p>
                 )}
+              <p className={styles["field-help"]}>
+                {t("Check the box above to continue.")}
+              </p>
               <div className={styles.actions}>
                 <button
                   ref={trigger}
                   type="submit"
+                  disabled={!selection.confirmed}
                   className={
                     selected === "HIDDEN"
                       ? styles["danger-button"]

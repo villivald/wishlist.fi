@@ -597,8 +597,7 @@ for (const locale of ["en", "fi"] as const) {
           : "Share with invited people",
       exact: true,
     });
-    await save.click();
-    await expect(audience.getByRole("checkbox")).toBeFocused();
+    await expect(save).toBeDisabled();
     expect(await (await request.get(listUrl)).text()).toContain(title);
     await audience.getByRole("checkbox").check();
     await save.click();

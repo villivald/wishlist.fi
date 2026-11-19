@@ -36,10 +36,11 @@ const start = async (page: Page) => {
   return new URL(page.url()).pathname;
 };
 const invite = async (page: Page) => {
-  await page.getByLabel("Name or username").fill("e2e-member");
-  await page.getByRole("option", { name: /e2e-member/ }).click();
   await page
-    .getByRole("button", { name: "Invite e2e-member", exact: true })
+    .getByRole("textbox", { name: "Invitation email" })
+    .fill(accounts.member.email);
+  await page
+    .getByRole("button", { name: "Send invitation", exact: true })
     .click();
   await expect(
     page.getByRole("heading", { name: "Pending invitations", exact: true }),
@@ -370,6 +371,7 @@ test("people picker supports keyboard selection, clearing, empty results and Fin
   });
   await expect(members.getByText("e2e-owner", { exact: true })).toBeVisible();
   await expect(members.getByText("@e2e-owner", { exact: true })).toHaveCount(0);
+  await page.getByText("Search by name", { exact: true }).click();
   const input = page.getByRole("combobox", { name: "Name or username" });
   await input.fill("e2e-member");
   const option = page.getByRole("option", { name: /e2e-member/ });
@@ -395,7 +397,7 @@ test("people picker supports keyboard selection, clearing, empty results and Fin
     .screenshot({ path: info.outputPath("people-picker-detail.png") });
   await input.press("Enter");
   await expect(
-    page.getByRole("button", { name: "Invite e2e-member", exact: true }),
+    page.getByRole("button", { name: "Invite Demo Friend", exact: true }),
   ).toBeVisible();
   await expect(page.getByRole("listbox")).toHaveCount(0);
   await page.getByRole("button", { name: "Clear selection" }).click();
@@ -417,6 +419,7 @@ test("people picker supports keyboard selection, clearing, empty results and Fin
     document.documentElement.style.fontSize = "200%";
     document.documentElement.classList.add("dark");
   });
+  await page.getByText("Hae nimellä", { exact: true }).click();
   await page
     .getByRole("combobox", { name: "Nimi tai käyttäjänimi" })
     .fill("e2e-member");
@@ -432,12 +435,25 @@ test("people picker supports keyboard selection, clearing, empty results and Fin
   if (info.project.use.hasTouch) await finnishOption.tap();
   else await finnishOption.click();
   await expect(
-    page.getByRole("button", { name: "Kutsu e2e-member", exact: true }),
+    page.getByRole("button", { name: "Kutsu Demo Friend", exact: true }),
   ).toBeVisible();
   await page.screenshot({
     path: info.outputPath("people-picker-finnish-large.png"),
     fullPage: true,
   });
+  const region = page.getByRole("region", {
+    name: "Kutsu henkilöitä",
+    exact: true,
+  });
+  expect(await region.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(
+    true,
+  );
+  await region
+    .getByRole("button", { name: "Kutsu Demo Friend", exact: true })
+    .click();
+  await expect(
+    region.getByRole("heading", { name: "Avoimet kutsut" }),
+  ).toBeVisible();
 });
 
 test("reservation actions align and group disclosure stays compact", async ({
@@ -570,4 +586,65 @@ test("group emails have readable localized layouts and authenticated links", asy
       scale: "css",
     });
   }
+});
+
+test("eligible favorites can be invited without typing and typing an email clears the selection", async ({
+  page,
+}, info) => {
+  const db = testPrisma();
+  try {
+    await db.wishlist.create({
+      data: {
+        title: "Friend’s public list",
+        id: "e2e-group-favorite-profile",
+        memberships: { create: { userId: "e2e-member", role: "ADMIN" } },
+        ownerId: "e2e-member",
+        publication: "PUBLISHED",
+        visibility: "PUBLIC",
+      },
+    });
+    await db.favoritePerson.create({
+      data: { userId: "e2e-owner", personId: "e2e-member" },
+    });
+  } finally {
+    await db.$disconnect();
+  }
+  await signIn(page);
+  const path = await start(page);
+  await page.goto(path.replace("/en/", "/fi/"));
+  const region = page.getByRole("region", {
+    name: "Kutsu henkilöitä",
+    exact: true,
+  });
+  await region.screenshot({ path: info.outputPath("group-invite-fi.png") });
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.evaluate(() => {
+    document.documentElement.style.fontSize = "200%";
+    document.documentElement.classList.add("dark");
+  });
+  const favorite = region
+    .getByRole("group", { name: "Suosikeistasi" })
+    .getByRole("button");
+  await expect(region).not.toContainText(accounts.member.email);
+  await favorite.focus();
+  await favorite.press("Space");
+  await expect(favorite).toHaveAttribute("aria-pressed", "true");
+  await region
+    .getByRole("textbox", { name: "Tai kutsu sähköpostitse" })
+    .fill("another@example.test");
+  await expect(favorite).toHaveAttribute("aria-pressed", "false");
+  await favorite.click();
+  await expect(
+    region.getByRole("textbox", { name: "Tai kutsu sähköpostitse" }),
+  ).toHaveValue("");
+  expect(await region.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(
+    true,
+  );
+  await region
+    .getByRole("button", { name: "Kutsu e2e-member", exact: true })
+    .click();
+  await expect(favorite).toHaveCount(0);
+  await expect(
+    region.getByRole("heading", { name: "Avoimet kutsut" }),
+  ).toBeVisible();
 });

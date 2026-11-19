@@ -1,4 +1,4 @@
-import { ChevronDown, UsersRound } from "lucide-react";
+import { ChevronDown, Mail, UsersRound } from "lucide-react";
 import { ActionForm } from "@/components/form/action-form";
 import styles from "@/components/shell.module.css";
 import { useText } from "@/i18n/use-text";
@@ -95,8 +95,15 @@ export function GroupAction({
       action={manageGroup.bind(null, id)}
       label={label}
       pendingLabel={t("Updating…")}
+      icon={
+        operation === "invite" ? (
+          <Mail size={18} aria-hidden="true" />
+        ) : undefined
+      }
       destructive={destructive}
-      secondary={!destructive && operation !== "accept"}
+      secondary={
+        !destructive && operation !== "accept" && operation !== "invite"
+      }
       requireConfirmation={operation === "accept" || !!confirmation}
     >
       <input type="hidden" name="operation" value={operation} />
