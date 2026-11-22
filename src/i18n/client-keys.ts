@@ -166,6 +166,7 @@ export const clientTextKeys = [
   "Enter a full HTTP or HTTPS link without login details",
   "Enter a label",
   "Enter a title",
+  "Enter a valid email address",
   "Enter a valid price",
   "Enter a valid price with at most two decimal places.",
   "Enter the eight letters from your latest email.",

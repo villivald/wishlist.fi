@@ -49,6 +49,14 @@
   background: var(--muted);
 }
 
+.list-cover {
+  background: color-mix(
+    in srgb,
+    var(--list-accent, #ba9b72) 19%,
+    var(--surface)
+  );
+}
+
 .stack-image {
   width: 62%;
   flex-shrink: 0;

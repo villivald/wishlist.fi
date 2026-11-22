@@ -11,6 +11,7 @@ import { ListStatus } from "@/components/cards/list-status";
 import { ListWishCounts } from "@/components/cards/list-wish-counts";
 import { ReservationAvailability } from "@/components/cards/reservation-availability";
 import shell from "@/components/shell.module.css";
+import { getCuratedWishlistCopy } from "@/features/discovery/service/curated-lists";
 import { ListTheme } from "@/features/premium/components/list-theme";
 import { Link } from "@/i18n/navigation";
 import { useText } from "@/i18n/use-text";
@@ -29,16 +30,17 @@ export function MyListCard({
   favorite: boolean;
 }) {
   const t = useText();
+  const title = getCuratedWishlistCopy(list, t.locale)?.title ?? list.title;
   const path = navigationPath(listPath(list.id), "lists");
   return (
     <li className={shell["list-card"]}>
       <ListTheme theme={list.theme} media>
-        {list.title ? (
-          <CardMediaLink path={path} title={list.title}>
+        {title ? (
+          <CardMediaLink path={path} title={title}>
             <ListPreview
               image={list.image}
               images={list.previewImages}
-              title={list.title}
+              title={title}
             />
           </CardMediaLink>
         ) : (
@@ -46,13 +48,7 @@ export function MyListCard({
         )}
       </ListTheme>
       <div className={styles.identity}>
-        <h2>
-          {list.title ? (
-            <Link href={path}>{list.title}</Link>
-          ) : (
-            t("Hidden list")
-          )}
-        </h2>
+        <h2>{title ? <Link href={path}>{title}</Link> : t("Hidden list")}</h2>
         <div className={styles.meta}>
           <p className={cardStyles["list-owner"]}>
             <UserRound size={16} aria-hidden="true" />
@@ -77,7 +73,7 @@ export function MyListCard({
             </span>
           )}
         </div>
-        {list.title && (
+        {title && (
           <ListStatus
             publication={list.publication}
             visibility={list.visibility}
@@ -85,7 +81,7 @@ export function MyListCard({
         )}
       </div>
       <div className={cardStyles["list-footer"]}>
-        {list.title ? (
+        {title ? (
           <>
             <ListWishCounts
               availableWishCount={list.availableWishCount}
@@ -96,7 +92,7 @@ export function MyListCard({
               path={listPath(list.id)}
               section="lists"
               settingsPath={listSettingsPath(list.id)}
-              title={list.title}
+              title={title}
               canManage={list.canManage}
               favorite={{ kind: "list", targetId: list.id, saved: favorite }}
               sharingPath={list.canManage ? sharingPath(list.id) : undefined}
@@ -108,7 +104,7 @@ export function MyListCard({
                 <LeaveListButton
                   listId={list.id}
                   membershipId={list.membership.id}
-                  title={list.title}
+                  title={title}
                 />
               )}
             </CardActions>

@@ -9,7 +9,10 @@ import { ListStatus } from "@/components/cards/list-status";
 import { SuccessMessage } from "@/components/form/success-message";
 import styles from "@/components/shell.module.css";
 import { getAuth } from "@/features/auth/actions/get-auth";
-import { isCuratedWishlist } from "@/features/discovery/service/curated-lists";
+import {
+  getCuratedWishlistCopy,
+  isCuratedWishlist,
+} from "@/features/discovery/service/curated-lists";
 import { FavoriteButton } from "@/features/favorites/components/favorite-button";
 import { readFavoriteIds } from "@/features/favorites/service/favorites";
 import { MediaImage } from "@/features/media/components/media-image";
@@ -78,6 +81,7 @@ export default async function ListPage({
   const section = detailSection(query.from, list.canManage);
   const published = list.publication === "PUBLISHED";
   const curated = isCuratedWishlist(list);
+  const { title, description } = getCuratedWishlistCopy(list, t.locale) ?? list;
   const premium = list.ownerId
     ? (await readPremiumAccess(list.ownerId)).plan === "PREMIUM"
     : false;
@@ -131,7 +135,7 @@ export default async function ListPage({
                   visibility={list.visibility}
                 />
               )}
-              <h1>{list.title}</h1>
+              <h1>{title}</h1>
               {list.owner && (
                 <p className={styles.muted}>
                   <span className={styles["visually-hidden"]}>
@@ -151,11 +155,11 @@ export default async function ListPage({
                     kind="list"
                     targetId={list.id}
                     saved={favoriteIds.includes(list.id)}
-                    title={list.title}
+                    title={title}
                   />
                 )}
                 {published && list.visibility === "PUBLIC" && (
-                  <CopyLink path={listPath(list.id)} title={list.title} />
+                  <CopyLink path={listPath(list.id)} title={title} />
                 )}
               </div>
               <div className={headerStyles.primary}>
@@ -211,9 +215,7 @@ export default async function ListPage({
         </header>
       </ListTheme>
 
-      {list.description && (
-        <p className={styles.description}>{list.description}</p>
-      )}
+      {description && <p className={styles.description}>{description}</p>}
 
       {curated && (
         <div className={styles.actions}>

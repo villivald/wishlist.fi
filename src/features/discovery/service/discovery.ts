@@ -5,7 +5,11 @@ import { readWishCounts } from "@/features/wishlist/service/wish-counts";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { availableWishes, publicLists, publicOwners } from "./access";
-import { curatedListSettings, readCuratedWishlistIds } from "./curated-lists";
+import {
+  curatedListSettings,
+  findCuratedWishlistIdsByCopy,
+  readCuratedWishlistIds,
+} from "./curated-lists";
 import { peopleOrderedByName } from "./people-order";
 import { type DiscoveryQuery, parseDiscoveryQuery } from "./query";
 
@@ -31,6 +35,8 @@ const discoveryListSelection = {
   theme: true,
   description: true,
   image: imageSelection,
+  publication: true,
+  visibility: true,
   reservationsEnabled: true,
   wishes: wishPreviewSelection,
 } satisfies Prisma.WishlistSelect;
@@ -50,6 +56,7 @@ export const discoverLists = async (
     !filters.q &&
     filters.sort === "newest";
   const curatedIds = defaultListView ? readCuratedWishlistIds() : [];
+  const copyMatches = filters.q ? findCuratedWishlistIdsByCopy(filters.q) : [];
 
   const listQuery = prisma.wishlist.findMany({
     where: {
@@ -81,6 +88,9 @@ export const discoverLists = async (
                   mode: "insensitive",
                 },
               },
+              ...(copyMatches.length
+                ? [{ ...curatedListSettings, id: { in: copyMatches } }]
+                : []),
             ],
           }
         : {}),

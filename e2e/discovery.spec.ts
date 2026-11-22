@@ -36,6 +36,7 @@ test("features eligible lists in editorial order on the Browse landing view", as
           ...defaults,
           id: "e2e-ideas-experience",
           title: "Experiences to share",
+          theme: "playful",
         },
         {
           ...defaults,
@@ -78,9 +79,14 @@ test("features eligible lists in editorial order on the Browse landing view", as
   const curated = page.getByRole("region", { name: "Wishlist inspiration" });
   await expect(curated.getByText("Curated by Wishlist")).toBeVisible();
   await expect(curated.getByRole("heading", { level: 3 })).toHaveText([
-    "Experiences to share",
+    "For Kids",
     "Small gifts under €25",
   ]);
+  await expect(
+    curated.getByText(
+      "Ideas for children of different ages, with play and everyday family life in mind.",
+    ),
+  ).toBeVisible();
   await expect(
     curated.getByText("Reservations off", { exact: true }),
   ).toHaveCount(0);
@@ -97,13 +103,13 @@ test("features eligible lists in editorial order on the Browse landing view", as
     scale: "css",
   });
   const curatedLink = curated
-    .getByRole("heading", { name: "Experiences to share" })
+    .getByRole("heading", { name: "For Kids" })
     .getByRole("link");
   await curatedLink.focus();
   await curatedLink.press("Enter");
   const detail = page.getByRole("main");
   await expect(
-    detail.getByRole("heading", { level: 1, name: "Experiences to share" }),
+    detail.getByRole("heading", { level: 1, name: "For Kids" }),
   ).toBeVisible();
   await expect(curated).toHaveCount(0);
   await expect(
@@ -115,9 +121,12 @@ test("features eligible lists in editorial order on the Browse landing view", as
 
   await page.goto("/en/browse?view=lists&q=Experiences");
   await expect(curated).toHaveCount(0);
-  await expect(publicLists.getByRole("heading")).toHaveText([
-    "Experiences to share",
-  ]);
+  await expect(publicLists.getByRole("heading")).toHaveText(["For Kids"]);
+  await page.goto("/fi/browse?view=lists&q=leikkiin");
+  await expect(page.getByRole("heading", { name: "Lapsille" })).toBeVisible();
+
+  await page.goto("/en/browse?view=lists&q=Books");
+  await expect(publicLists.getByRole("heading")).toHaveCount(0);
 
   for (const query of [
     "view=wishes",
@@ -136,6 +145,23 @@ test("features eligible lists in editorial order on the Browse landing view", as
   await page.goto("/fi/browse?view=lists");
   const finnishCurated = page.getByRole("region", { name: "Lahjaideoita" });
   await expect(finnishCurated.getByText("Wishlistin valitsemat")).toBeVisible();
+  await expect(finnishCurated.getByRole("heading", { level: 3 })).toHaveText([
+    "Lapsille",
+    "Small gifts under €25",
+  ]);
+  const preview = finnishCurated
+    .getByRole("link", { name: /Lapsille/ })
+    .first();
+  const classicPreview = finnishCurated
+    .getByRole("link", { name: /Small gifts under €25/ })
+    .first();
+  const coverColor = (link: typeof preview) =>
+    link
+      .locator(":scope > div")
+      .evaluate((cover) => getComputedStyle(cover).backgroundColor);
+  expect(await coverColor(preview)).not.toEqual(
+    await coverColor(classicPreview),
+  );
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -159,6 +185,18 @@ test("features eligible lists in editorial order on the Browse landing view", as
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+  await finnishCurated
+    .getByRole("heading", { name: "Lapsille" })
+    .getByRole("link")
+    .click();
+  await expect(
+    detail.getByRole("heading", { level: 1, name: "Lapsille" }),
+  ).toBeVisible();
+  await expect(
+    detail.getByText(
+      "Ideoita eri-ikäisille lapsille niin leikkiin kuin perheen yhteiseen arkeen.",
+    ),
+  ).toBeVisible();
 });
 
 test.beforeEach(async () => {

@@ -42,7 +42,13 @@ export function CardMedia({
   const t = useText();
 
   return (
-    <div className={styles.media}>
+    <div
+      className={
+        kind === "list"
+          ? `${styles.media} ${styles["list-cover"]}`
+          : styles.media
+      }
+    >
       {image ? (
         <MediaImage
           image={image}
@@ -76,7 +82,10 @@ export function ListPreview({
     return <CardMedia image={image} kind="list" title={title} />;
 
   return (
-    <div className={styles.stack} aria-label={t("Preview of available wishes")}>
+    <div
+      className={`${styles.stack} ${styles["list-cover"]}`}
+      aria-label={t("Preview of available wishes")}
+    >
       {images.map((preview) => (
         <div key={preview.id} className={styles["stack-image"]}>
           <MediaImage image={preview} compact sizes={STACK_IMAGE_SIZES} />

@@ -3,6 +3,7 @@ import {
   type DetailSection,
   navigationPath,
 } from "@/app/_navigation/navigation-path";
+import { getCuratedWishlistCopy } from "@/features/discovery/service/curated-lists";
 import type {
   discoverLists,
   discoverUsers,
@@ -36,8 +37,6 @@ import type { WishTone } from "./wish-tones";
 
 type ListItem = Awaited<ReturnType<typeof discoverLists>>["lists"][number] & {
   canManage?: boolean;
-  publication?: "DRAFT" | "PUBLISHED";
-  visibility?: "PUBLIC" | "PRIVATE";
 };
 type WishItem = Omit<
   Awaited<ReturnType<typeof discoverWishes>>["wishes"][number],
@@ -65,6 +64,8 @@ export function CatalogueListCard({
   showReservationAvailability?: boolean;
 }) {
   const t = useText();
+  const copy = getCuratedWishlistCopy(list, t.locale);
+  const { title, description } = copy ?? list;
   const ownerName = list.owner?.name?.trim();
   const Heading = headingLevel === 3 ? "h3" : "h2";
   return (
@@ -72,20 +73,18 @@ export function CatalogueListCard({
       <ListTheme theme={list.theme} media>
         <CardMediaLink
           path={navigationPath(listPath(list.id), section)}
-          title={list.title}
+          title={title}
         >
           <ListPreview
             image={list.image}
             images={list.previewImages}
-            title={list.title}
+            title={title}
           />
         </CardMediaLink>
       </ListTheme>
       {list.isOwner && <OwnershipBadge edge />}
       <Heading>
-        <Link href={navigationPath(listPath(list.id), section)}>
-          {list.title}
-        </Link>
+        <Link href={navigationPath(listPath(list.id), section)}>{title}</Link>
       </Heading>
       {list.owner && (
         <p className={cardStyles["list-owner"]}>
@@ -100,18 +99,16 @@ export function CatalogueListCard({
           </span>
         </p>
       )}
-      {list.publication &&
-        list.visibility &&
-        (list.publication === "DRAFT" || list.visibility === "PRIVATE") && (
-          <ListStatus
-            publication={list.publication}
-            visibility={list.visibility}
-          />
-        )}
-      {list.description && (
+      {(list.publication === "DRAFT" || list.visibility === "PRIVATE") && (
+        <ListStatus
+          publication={list.publication}
+          visibility={list.visibility}
+        />
+      )}
+      {description && (
         <p className={styles.description}>
-          {list.description.slice(0, 180)}
-          {list.description.length > 180 ? "…" : ""}
+          {description.slice(0, 180)}
+          {description.length > 180 ? "…" : ""}
         </p>
       )}
       <div className={cardStyles["list-footer"]}>
@@ -126,7 +123,7 @@ export function CatalogueListCard({
           path={listPath(list.id)}
           section={section}
           settingsPath={listSettingsPath(list.id)}
-          title={list.title}
+          title={title}
           canCopy
           favorite={favorite}
           canManage={list.canManage ?? list.isOwner}
