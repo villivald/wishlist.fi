@@ -1,4 +1,12 @@
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import {
   discoverLists,
   discoverWishes,
@@ -30,6 +38,7 @@ beforeEach(async () => {
   ({ id: listId } = await createWishlist("e2e-owner", listInput));
   await setWishlistPublication("e2e-owner", listId, "PUBLISHED");
 });
+afterEach(() => vi.unstubAllEnvs());
 afterAll(() => prisma.$disconnect());
 
 describe("public discovery", () => {
@@ -162,6 +171,37 @@ describe("public discovery", () => {
         ({ title }) => title,
       ),
     ).toEqual(["Reservable gift"]);
+  });
+
+  it("keeps eligible lists in ordinary results until they are configured for curation", async () => {
+    const curated = await createWishlist("e2e-owner", {
+      ...listInput,
+      title: "Example gift ideas",
+      reservationsEnabled: false,
+    });
+    await setWishlistPublication("e2e-owner", curated.id, "PUBLISHED");
+    const ordinaryIds = [curated.id, listId].sort();
+
+    for (const value of [undefined, "", " , /invalid-id , missing-id "]) {
+      vi.stubEnv("CURATED_WISHLIST_IDS", value);
+      const ordinary = await discoverLists({});
+      expect(ordinary.curatedLists).toEqual([]);
+      expect(ordinary.lists.map(({ id }) => id).sort()).toEqual(ordinaryIds);
+      expect(ordinary.hasNextPage).toBe(false);
+    }
+
+    vi.stubEnv("CURATED_WISHLIST_IDS", `${curated.id},${curated.id},${listId}`);
+    const featured = await discoverLists({});
+    expect(featured.curatedLists.map(({ id }) => id)).toEqual([curated.id]);
+    expect(featured.lists.map(({ id }) => id)).toEqual([listId]);
+
+    await prisma.wishlist.update({
+      where: { id: curated.id },
+      data: { reservationsEnabled: true },
+    });
+    const updated = await discoverLists({});
+    expect(updated.curatedLists).toEqual([]);
+    expect(updated.lists.map(({ id }) => id).sort()).toEqual(ordinaryIds);
   });
 
   it("paginates public lists and wishes with stable tie-breakers and bounded invalid input", async () => {

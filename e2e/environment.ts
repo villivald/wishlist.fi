@@ -28,6 +28,8 @@ export const testEnvironment = {
   DATABASE_URL: testDatabaseUrl,
   DIRECT_URL: testDatabaseUrl,
   APP_URL: testOrigin,
+  CURATED_WISHLIST_IDS:
+    "e2e-ideas-experience, e2e-ideas-budget,e2e-ideas-draft,e2e-ideas-private,e2e-ideas-archived,e2e-ideas-reservable,e2e-ideas-experience,e2e-ideas-missing",
   GOOGLE_AUTH_ENABLED: "0",
   GOOGLE_TAG_MANAGER_ENABLED: "0",
   GOOGLE_CLIENT_ID: "",

@@ -1,0 +1,23 @@
+.curated {
+  --card-media-ratio: 3 / 2;
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  gap: 0.875rem;
+  padding-block: clamp(0.65rem, 1.75vw, 1rem);
+  padding-inline: clamp(0.75rem, 2.5vw, 1.5rem);
+  border: 1px solid var(--border);
+  border-block-start: 3px solid var(--highlight);
+  border-radius: var(--radius);
+  background: var(--wish-butter);
+  overflow-wrap: anywhere;
+}
+
+.curated > ul {
+  row-gap: 1.75rem;
+}
+
+.curated > ul > li {
+  gap: 0.5rem;
+}

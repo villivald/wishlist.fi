@@ -18,6 +18,45 @@ type Results = Awaited<
   >
 >;
 
+export function DiscoveryListResults({
+  lists,
+  canFavorite,
+  favoriteIds,
+  curated = false,
+}: {
+  lists: Awaited<ReturnType<typeof discoverLists>>["lists"];
+  canFavorite: boolean;
+  favoriteIds: string[];
+  curated?: boolean;
+}) {
+  const t = useText();
+
+  return (
+    <ul
+      className={styles["list-grid"]}
+      aria-label={curated ? undefined : t("Public lists")}
+    >
+      {lists.map((list) => (
+        <CatalogueListCard
+          key={list.id}
+          list={list}
+          headingLevel={curated ? 3 : 2}
+          showReservationAvailability={!curated}
+          favorite={
+            canFavorite
+              ? {
+                  kind: "list",
+                  targetId: list.id,
+                  saved: favoriteIds.includes(list.id),
+                }
+              : undefined
+          }
+        />
+      ))}
+    </ul>
+  );
+}
+
 export function DiscoveryResults({
   result,
   canFavorite = false,
@@ -29,6 +68,16 @@ export function DiscoveryResults({
 }) {
   const t = useText();
 
+  if ("lists" in result) {
+    return (
+      <DiscoveryListResults
+        lists={result.lists}
+        canFavorite={canFavorite}
+        favoriteIds={favoriteIds}
+      />
+    );
+  }
+
   const tones = createWishTones(
     "wishes" in result ? result.wishes.map((wish) => wish.id) : [],
   );
@@ -38,59 +87,41 @@ export function DiscoveryResults({
       aria-label={
         result.filters.view === "users"
           ? t("People with public lists")
-          : result.filters.view === "lists"
-            ? t("Public lists")
-            : t("Public wishes")
+          : t("Public wishes")
       }
     >
-      {"lists" in result
-        ? result.lists.map((list) => (
-            <CatalogueListCard
-              key={list.id}
-              list={list}
+      {"wishes" in result
+        ? result.wishes.map((wish) => (
+            <CatalogueWishCard
+              key={wish.id}
+              wish={wish}
+              tone={tones[wish.id]}
               favorite={
                 canFavorite
                   ? {
-                      kind: "list",
-                      targetId: list.id,
-                      saved: favoriteIds.includes(list.id),
+                      kind: "wish",
+                      targetId: wish.id,
+                      saved: favoriteIds.includes(wish.id),
                     }
                   : undefined
               }
             />
           ))
-        : "wishes" in result
-          ? result.wishes.map((wish) => (
-              <CatalogueWishCard
-                key={wish.id}
-                wish={wish}
-                tone={tones[wish.id]}
-                favorite={
-                  canFavorite
-                    ? {
-                        kind: "wish",
-                        targetId: wish.id,
-                        saved: favoriteIds.includes(wish.id),
-                      }
-                    : undefined
-                }
-              />
-            ))
-          : result.users.map((user) => (
-              <CataloguePersonCard
-                key={user.username}
-                user={user}
-                favorite={
-                  canFavorite
-                    ? {
-                        kind: "person",
-                        targetId: user.username,
-                        saved: favoriteIds.includes(user.username),
-                      }
-                    : undefined
-                }
-              />
-            ))}
+        : result.users.map((user) => (
+            <CataloguePersonCard
+              key={user.username}
+              user={user}
+              favorite={
+                canFavorite
+                  ? {
+                      kind: "person",
+                      targetId: user.username,
+                      saved: favoriteIds.includes(user.username),
+                    }
+                  : undefined
+              }
+            />
+          ))}
     </ul>
   );
 }

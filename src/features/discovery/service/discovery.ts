@@ -5,6 +5,7 @@ import { readWishCounts } from "@/features/wishlist/service/wish-counts";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { availableWishes, publicLists, publicOwners } from "./access";
+import { curatedListSettings, readCuratedWishlistIds } from "./curated-lists";
 import { peopleOrderedByName } from "./people-order";
 import { type DiscoveryQuery, parseDiscoveryQuery } from "./query";
 
@@ -22,74 +23,119 @@ const wishOrder = {
   "price-high": [{ priceMinor: "desc" }, { id: "desc" }],
 } satisfies Record<string, Prisma.WishOrderByWithRelationInput[]>;
 
+const discoveryListSelection = {
+  id: true,
+  ownerId: true,
+  owner: { select: { name: true, username: true } },
+  title: true,
+  theme: true,
+  description: true,
+  image: imageSelection,
+  reservationsEnabled: true,
+  wishes: wishPreviewSelection,
+} satisfies Prisma.WishlistSelect;
+
 export const discoverLists = async (
   query: DiscoveryQuery,
   viewerId: string | null = null,
 ) => {
   const filters = parseDiscoveryQuery({ ...query, view: "lists" });
-  const lists = filters.error
-    ? []
-    : await prisma.wishlist.findMany({
-        where: {
-          ...publicLists,
-          ...(filters.owner
-            ? { owner: { username: filters.owner, emailVerified: true } }
-            : {}),
-          ...(filters.reservable ? { reservationsEnabled: true } : {}),
-          ...(filters.q
-            ? {
-                OR: [
-                  {
-                    title: {
-                      contains: literalSearch(filters.q),
-                      mode: "insensitive",
-                    },
-                  },
-                  {
-                    description: {
-                      contains: literalSearch(filters.q),
-                      mode: "insensitive",
-                    },
-                  },
-                ],
-              }
-            : {}),
-        },
-        select: {
-          id: true,
-          ownerId: true,
-          owner: { select: { name: true, username: true } },
-          title: true,
-          theme: true,
-          description: true,
-          image: imageSelection,
-          reservationsEnabled: true,
-          wishes: wishPreviewSelection,
-        },
-        orderBy:
-          filters.sort === "title"
-            ? [{ title: "asc" }, { id: "asc" }]
-            : [{ createdAt: "desc" }, { id: "desc" }],
-        skip: (filters.page - 1) * 20,
-        take: 21,
-      });
+  if (filters.error) {
+    return { filters, lists: [], curatedLists: [], hasNextPage: false };
+  }
 
+  const defaultListView =
+    !filters.owner &&
+    !filters.reservable &&
+    !filters.q &&
+    filters.sort === "newest";
+  const curatedIds = defaultListView ? readCuratedWishlistIds() : [];
+
+  const listQuery = prisma.wishlist.findMany({
+    where: {
+      ...publicLists,
+      ...(curatedIds.length
+        ? {
+            NOT: {
+              id: { in: curatedIds },
+              reservationsEnabled: curatedListSettings.reservationsEnabled,
+            },
+          }
+        : {}),
+      ...(filters.owner
+        ? { owner: { username: filters.owner, emailVerified: true } }
+        : {}),
+      ...(filters.reservable ? { reservationsEnabled: true } : {}),
+      ...(filters.q
+        ? {
+            OR: [
+              {
+                title: {
+                  contains: literalSearch(filters.q),
+                  mode: "insensitive",
+                },
+              },
+              {
+                description: {
+                  contains: literalSearch(filters.q),
+                  mode: "insensitive",
+                },
+              },
+            ],
+          }
+        : {}),
+    },
+    select: discoveryListSelection,
+    orderBy:
+      filters.sort === "title"
+        ? [{ title: "asc" }, { id: "asc" }]
+        : [{ createdAt: "desc" }, { id: "desc" }],
+    skip: (filters.page - 1) * 20,
+    take: 21,
+  });
+  // Both reads must agree on eligibility while list settings are changing.
+  const [lists, featured] =
+    curatedIds.length && filters.page === 1
+      ? await prisma.$transaction(
+          [
+            listQuery,
+            prisma.wishlist.findMany({
+              where: {
+                ...publicLists,
+                ...curatedListSettings,
+                id: { in: curatedIds },
+              },
+              select: discoveryListSelection,
+            }),
+          ],
+          { isolationLevel: "RepeatableRead" },
+        )
+      : [await listQuery, []];
+
+  const pageLists = lists.slice(0, 20);
+  const featuredById = new Map(featured.map((list) => [list.id, list]));
   const counts = await readWishCounts(
     viewerId,
-    lists.slice(0, 20).map(({ id }) => id),
+    [...pageLists, ...featured].map(({ id }) => id),
   );
+  const toCard = ({ ownerId, wishes, ...list }: (typeof lists)[number]) => ({
+    ...list,
+    isOwner: !!viewerId && ownerId === viewerId,
+    previewImages: wishes.flatMap(({ image }) => (image ? [image] : [])),
+    ...(counts.get(list.id) ?? {
+      availableWishCount: 0,
+      reservedWishCount: 0,
+    }),
+  });
+
   return {
     filters,
-    lists: lists.slice(0, 20).map(({ ownerId, wishes, ...list }) => ({
-      ...list,
-      isOwner: !!viewerId && ownerId === viewerId,
-      previewImages: wishes.flatMap(({ image }) => (image ? [image] : [])),
-      ...(counts.get(list.id) ?? {
-        availableWishCount: 0,
-        reservedWishCount: 0,
-      }),
-    })),
-    hasNextPage: !filters.error && lists.length > 20 && filters.page < 1000,
+    lists: pageLists.map(toCard),
+    curatedLists: curatedIds.flatMap((id) => {
+      const list = featuredById.get(id);
+      return list ? [toCard(list)] : [];
+    }),
+    hasNextPage: lists.length > 20 && filters.page < 1000,
   };
 };
 

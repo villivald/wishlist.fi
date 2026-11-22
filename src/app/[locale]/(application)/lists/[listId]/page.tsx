@@ -9,6 +9,7 @@ import { ListStatus } from "@/components/cards/list-status";
 import { SuccessMessage } from "@/components/form/success-message";
 import styles from "@/components/shell.module.css";
 import { getAuth } from "@/features/auth/actions/get-auth";
+import { isCuratedWishlist } from "@/features/discovery/service/curated-lists";
 import { FavoriteButton } from "@/features/favorites/components/favorite-button";
 import { readFavoriteIds } from "@/features/favorites/service/favorites";
 import { MediaImage } from "@/features/media/components/media-image";
@@ -25,12 +26,15 @@ import { Link } from "@/i18n/navigation";
 import { getText } from "@/i18n/server";
 import {
   browsePath,
+  emailVerificationPath,
   favoritesPath,
   listPath,
   listSettingsPath,
   listsPath,
+  newListPath,
   reservationsPath,
   sharingPath,
+  signUpPath,
 } from "@/paths";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -73,6 +77,7 @@ export default async function ListPage({
   const { created, saved, wishDeleted } = query;
   const section = detailSection(query.from, list.canManage);
   const published = list.publication === "PUBLISHED";
+  const curated = isCuratedWishlist(list);
   const premium = list.ownerId
     ? (await readPremiumAccess(list.ownerId)).plan === "PREMIUM"
     : false;
@@ -117,7 +122,10 @@ export default async function ListPage({
           >
             <MediaImage image={list.image} cover sizes="144px" priority />
             <div>
-              {!list.canManage && (
+              {curated && (
+                <p className={styles.eyebrow}>{t("Curated by Wishlist")}</p>
+              )}
+              {!list.canManage && !curated && (
                 <ListStatus
                   publication={list.publication}
                   visibility={list.visibility}
@@ -205,6 +213,23 @@ export default async function ListPage({
 
       {list.description && (
         <p className={styles.description}>{list.description}</p>
+      )}
+
+      {curated && (
+        <div className={styles.actions}>
+          <Link
+            className={styles["secondary-button"]}
+            href={
+              user?.emailVerified
+                ? newListPath
+                : user
+                  ? emailVerificationPath
+                  : signUpPath
+            }
+          >
+            {t("Start your own list")}
+          </Link>
+        </div>
       )}
 
       {list.canManage && wishDeleted === "1" && (

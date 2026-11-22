@@ -55,13 +55,18 @@ export function CatalogueListCard({
   list,
   section = "browse",
   favorite,
+  headingLevel = 2,
+  showReservationAvailability = true,
 }: {
   list: ListItem;
   section?: DetailSection;
   favorite?: FavoriteTarget;
+  headingLevel?: 2 | 3;
+  showReservationAvailability?: boolean;
 }) {
   const t = useText();
   const ownerName = list.owner?.name?.trim();
+  const Heading = headingLevel === 3 ? "h3" : "h2";
   return (
     <li className={`${styles["list-card"]} ${cardStyles["browse-card"]}`}>
       <ListTheme theme={list.theme} media>
@@ -77,11 +82,11 @@ export function CatalogueListCard({
         </CardMediaLink>
       </ListTheme>
       {list.isOwner && <OwnershipBadge edge />}
-      <h2>
+      <Heading>
         <Link href={navigationPath(listPath(list.id), section)}>
           {list.title}
         </Link>
-      </h2>
+      </Heading>
       {list.owner && (
         <p className={cardStyles["list-owner"]}>
           <UserRound size={16} aria-hidden="true" />
@@ -114,7 +119,9 @@ export function CatalogueListCard({
           availableWishCount={list.availableWishCount}
           reservedWishCount={list.reservedWishCount}
         />
-        <ReservationAvailability enabled={list.reservationsEnabled} />
+        {showReservationAvailability && (
+          <ReservationAvailability enabled={list.reservationsEnabled} />
+        )}
         <CardActions
           path={listPath(list.id)}
           section={section}

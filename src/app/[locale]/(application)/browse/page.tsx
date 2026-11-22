@@ -3,7 +3,10 @@ import type { Metadata } from "next";
 import styles from "@/components/shell.module.css";
 import { getAuth } from "@/features/auth/actions/get-auth";
 import { BrowseControls } from "@/features/discovery/components/discovery-controls";
-import { DiscoveryResults } from "@/features/discovery/components/discovery-results";
+import {
+  DiscoveryListResults,
+  DiscoveryResults,
+} from "@/features/discovery/components/discovery-results";
 import {
   discoverLists,
   discoverUsers,
@@ -17,6 +20,7 @@ import {
 import { readFavoriteIds } from "@/features/favorites/service/favorites";
 import { Link } from "@/i18n/navigation";
 import { getText } from "@/i18n/server";
+import browseStyles from "./browse.module.css";
 
 export const dynamic = "force-dynamic";
 export async function generateMetadata(): Promise<Metadata> {
@@ -44,11 +48,13 @@ export default async function BrowsePage({
         ? await discoverWishes(query, user?.id)
         : await discoverLists(query, user?.id);
   const { filters, hasNextPage } = result;
+  const curatedLists = "curatedLists" in result ? result.curatedLists : [];
+  const canFavorite = !!user?.emailVerified;
   const favoriteIds = await readFavoriteIds(
     user?.emailVerified ? user.id : null,
     "lists" in result ? "list" : "wishes" in result ? "wish" : "person",
     "lists" in result
-      ? result.lists.map(({ id }) => id)
+      ? [...result.lists, ...curatedLists].map(({ id }) => id)
       : "wishes" in result
         ? result.wishes.map(({ id }) => id)
         : result.users.map(({ username }) => username),
@@ -63,11 +69,28 @@ export default async function BrowsePage({
   return (
     <section className={styles.page}>
       <BrowseControls filters={filters} />
+      {curatedLists.length > 0 && (
+        <section
+          className={browseStyles.curated}
+          aria-labelledby="wishlist-inspiration"
+        >
+          <div>
+            <p className={styles.eyebrow}>{t("Curated by Wishlist")}</p>
+            <h2 id="wishlist-inspiration">{t("Wishlist inspiration")}</h2>
+          </div>
+          <DiscoveryListResults
+            lists={curatedLists}
+            canFavorite={canFavorite}
+            favoriteIds={favoriteIds}
+            curated
+          />
+        </section>
+      )}
       {filters.error ? (
         <p role="alert" className={styles.error}>
           {t.message(filters.error)}
         </p>
-      ) : empty ? (
+      ) : empty && !curatedLists.length ? (
         <div className={styles["empty-state"]}>
           <Search aria-hidden="true" />
           <h2>
@@ -86,10 +109,10 @@ export default async function BrowsePage({
                 )}
           </p>
         </div>
-      ) : (
+      ) : empty ? null : (
         <DiscoveryResults
           result={result}
-          canFavorite={!!user?.emailVerified}
+          canFavorite={canFavorite}
           favoriteIds={favoriteIds}
         />
       )}

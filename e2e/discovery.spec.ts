@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
 import { testEnvironment } from "./environment";
 import { openMainNavigation } from "./navigation";
@@ -12,6 +13,153 @@ const submitSignIn = async (page: Page, account = accounts.member) => {
   await page.getByLabel("Password", { exact: true }).fill(account.password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
 };
+
+test("features eligible lists in editorial order on the Browse landing view", async ({
+  page,
+}, info) => {
+  const prisma = testPrisma();
+  const defaults = {
+    ownerId: "e2e-owner",
+    publication: "PUBLISHED",
+    visibility: "PUBLIC",
+    reservationsEnabled: false,
+  } as const;
+  try {
+    await prisma.$transaction(
+      [
+        {
+          ...defaults,
+          id: "e2e-ideas-budget",
+          title: "Small gifts under €25",
+        },
+        {
+          ...defaults,
+          id: "e2e-ideas-experience",
+          title: "Experiences to share",
+        },
+        {
+          ...defaults,
+          id: "e2e-ideas-draft",
+          title: "Draft editorial ideas",
+          publication: "DRAFT" as const,
+        },
+        {
+          ...defaults,
+          id: "e2e-ideas-private",
+          title: "Private editorial ideas",
+          visibility: "PRIVATE" as const,
+        },
+        {
+          ...defaults,
+          id: "e2e-ideas-archived",
+          title: "Archived editorial ideas",
+          archivedAt: new Date(),
+        },
+        {
+          ...defaults,
+          id: "e2e-ideas-reservable",
+          title: "Reservable editorial ideas",
+          reservationsEnabled: true,
+        },
+      ].map((data) =>
+        prisma.wishlist.create({
+          data: {
+            ...data,
+            memberships: { create: { userId: "e2e-owner", role: "ADMIN" } },
+          },
+        }),
+      ),
+    );
+  } finally {
+    await prisma.$disconnect();
+  }
+
+  await page.goto("/en/browse");
+  const curated = page.getByRole("region", { name: "Wishlist inspiration" });
+  await expect(curated.getByText("Curated by Wishlist")).toBeVisible();
+  await expect(curated.getByRole("heading", { level: 3 })).toHaveText([
+    "Experiences to share",
+    "Small gifts under €25",
+  ]);
+  await expect(
+    curated.getByText("Reservations off", { exact: true }),
+  ).toHaveCount(0);
+  const publicLists = page.getByRole("list", { name: "Public lists" });
+  await expect(publicLists.getByRole("heading")).toHaveText([
+    "Reservable editorial ideas",
+    "Birthday reading list",
+  ]);
+  await expect(
+    publicLists.getByText("Reservations enabled", { exact: true }),
+  ).toHaveCount(2);
+  await curated.screenshot({
+    path: info.outputPath("curated-browse.png"),
+    scale: "css",
+  });
+  const curatedLink = curated
+    .getByRole("heading", { name: "Experiences to share" })
+    .getByRole("link");
+  await curatedLink.focus();
+  await curatedLink.press("Enter");
+  const detail = page.getByRole("main");
+  await expect(
+    detail.getByRole("heading", { level: 1, name: "Experiences to share" }),
+  ).toBeVisible();
+  await expect(curated).toHaveCount(0);
+  await expect(
+    detail.getByText("Curated by Wishlist", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    detail.getByRole("link", { name: "Start your own list" }),
+  ).toHaveAttribute("href", "/en/sign-up");
+
+  await page.goto("/en/browse?view=lists&q=Experiences");
+  await expect(curated).toHaveCount(0);
+  await expect(publicLists.getByRole("heading")).toHaveText([
+    "Experiences to share",
+  ]);
+
+  for (const query of [
+    "view=wishes",
+    "view=users",
+    "page=2",
+    "sort=title",
+    "reservable=on",
+    "owner=e2e-owner",
+  ]) {
+    await page.goto(`/en/browse?${query}`);
+    await expect(curated).toHaveCount(0);
+  }
+
+  await page.setViewportSize({ width: 320, height: 750 });
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.goto("/fi/browse?view=lists");
+  const finnishCurated = page.getByRole("region", { name: "Lahjaideoita" });
+  await expect(finnishCurated.getByText("Wishlistin valitsemat")).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  expect(
+    (
+      await new AxeBuilder({ page })
+        .include('[aria-labelledby="wishlist-inspiration"]')
+        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+        .analyze()
+    ).violations,
+  ).toEqual([]);
+  await finnishCurated.screenshot({
+    path: info.outputPath("curated-browse-fi-dark.png"),
+    scale: "css",
+  });
+  await page.addStyleTag({ content: "html { font-size: 200%; }" });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});
 
 test.beforeEach(async () => {
   await resetFixtures();
@@ -180,17 +328,22 @@ test("currency filters, pagination and keyboard search work in a narrow dark lay
   await page.setViewportSize({ width: 320, height: 740 });
   await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
   await page.goto("/en/browse?view=wishes");
-  await page.getByLabel("Search wishes").fill("Reading pick");
-  await page.getByLabel("Sort by").selectOption("price-low");
+  const filters = page.getByRole("form", { name: "Browse filters" });
+  const currency = filters.getByRole("combobox", { name: "Currency" });
+  const reservations = filters.getByRole("checkbox", {
+    name: "Reservations enabled",
+  });
+  await filters.getByLabel("Search wishes").fill("Reading pick");
+  await filters.getByLabel("Sort by").selectOption("price-low");
   await expect(page.getByRole("main").getByRole("alert")).toContainText(
     "Choose a currency",
   );
-  await page.getByLabel("Currency", { exact: true }).selectOption("EUR");
-  await page.getByLabel("Minimum price").fill("0");
-  await page.getByLabel("Maximum price").fill("21");
-  await page.getByLabel("Minimum priority").selectOption("5");
-  await page.getByLabel("Reservations enabled").check();
-  await expect(page.getByLabel("Reservations enabled")).toBeFocused();
+  await currency.selectOption("EUR");
+  await filters.getByLabel("Minimum price").fill("0");
+  await filters.getByLabel("Maximum price").fill("21");
+  await filters.getByLabel("Minimum priority").selectOption("5");
+  await reservations.check();
+  await expect(reservations).toBeFocused();
   const results = page.getByRole("list", { name: "Public wishes" });
   await expect(results.getByRole("listitem")).toHaveCount(20);
   await expect(results.getByRole("heading").first()).toHaveText(
@@ -203,9 +356,9 @@ test("currency filters, pagination and keyboard search work in a narrow dark lay
   ).toBe(true);
   await page.getByRole("link", { name: "Next page" }).click();
   await expect(results.getByRole("listitem")).toHaveCount(2);
-  await expect(page.getByLabel("Minimum price")).toHaveValue("0");
-  await expect(page.getByLabel("Currency", { exact: true })).toHaveValue("EUR");
-  await expect(page.getByLabel("Reservations enabled")).toBeChecked();
+  await expect(filters.getByLabel("Minimum price")).toHaveValue("0");
+  await expect(currency).toHaveValue("EUR");
+  await expect(reservations).toBeChecked();
   await page.screenshot({
     path: info.outputPath("browse-narrow-dark.png"),
     fullPage: true,
@@ -215,7 +368,7 @@ test("currency filters, pagination and keyboard search work in a narrow dark lay
   await expect(results.getByRole("heading").first()).toHaveText(
     "Reading pick 00",
   );
-  await page.getByLabel("Currency", { exact: true }).selectOption("USD");
+  await currency.selectOption("USD");
   await expect(
     page.getByRole("heading", { name: "No results found" }),
   ).toBeVisible();
