@@ -1,0 +1,54 @@
+.choices {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.choices legend {
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 48px;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.choice + .choice,
+.choices p {
+  margin-top: 0.5rem;
+}
+
+.choice:focus-within {
+  outline: 2px solid var(--foreground);
+  outline-offset: 2px;
+}
+
+.choice:hover,
+.choice:has(input:checked) {
+  border-color: var(--foreground);
+  background: var(--muted);
+}
+
+.choice input {
+  flex: none;
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.choice span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.choice small {
+  display: block;
+  color: var(--muted-foreground);
+}

@@ -1,5 +1,7 @@
 import {
+  ArrowRightLeft,
   CircleCheck,
+  Copy,
   ExternalLink,
   Eye,
   EyeOff,
@@ -47,7 +49,14 @@ export default async function WishPage({
   searchParams,
 }: {
   params: Promise<{ listId: string; wishId: string }>;
-  searchParams: Promise<{ created?: string; saved?: string; from?: string }>;
+  searchParams: Promise<{
+    created?: string;
+    saved?: string;
+    moved?: string;
+    copied?: string;
+    copies?: string;
+    from?: string;
+  }>;
 }) {
   const t = await getText();
 
@@ -59,13 +68,23 @@ export default async function WishPage({
     notFound();
   }
 
-  const { created, saved, from } = await searchParams;
+  const { created, saved, moved, copied, copies, from } = await searchParams;
   const section = detailSection(from, wish.canManage);
   const favoriteIds = await readFavoriteIds(
     user?.emailVerified ? user.id : null,
     "wish",
     [wish.id],
   );
+  const confirmation =
+    moved === "1"
+      ? t("Wish moved.")
+      : copied === "1"
+        ? t("Wish copied.")
+        : created === "1"
+          ? t("Wish added.")
+          : saved === "1"
+            ? t("Changes saved.")
+            : null;
 
   return (
     <section className={styles.page}>
@@ -74,9 +93,17 @@ export default async function WishPage({
         {t("Back to")} {wish.wishlist.title}
       </BackLink>
 
-      {wish.canManage && (created === "1" || saved === "1") && (
-        <SuccessMessage queryKeys={["created", "saved"]}>
-          {created === "1" ? t("Wish added.") : t("Changes saved.")}
+      {user?.emailVerified &&
+        copies &&
+        /^\d{1,6}$/.test(copies) &&
+        Number(copies) > 1 && (
+          <SuccessMessage queryKeys={["copies"]}>
+            {t("Wish copied to {count} lists.", { count: Number(copies) })}
+          </SuccessMessage>
+        )}
+      {wish.canManage && confirmation && (
+        <SuccessMessage queryKeys={["created", "saved", "moved", "copied"]}>
+          {confirmation}
         </SuccessMessage>
       )}
 
@@ -103,12 +130,23 @@ export default async function WishPage({
             {(user?.emailVerified || wish.canManage) && (
               <div className={styles.actions}>
                 {user?.emailVerified && (
-                  <FavoriteButton
-                    kind="wish"
-                    targetId={wish.id}
-                    saved={favoriteIds.includes(wish.id)}
-                    title={wish.title}
-                  />
+                  <>
+                    <FavoriteButton
+                      kind="wish"
+                      targetId={wish.id}
+                      saved={favoriteIds.includes(wish.id)}
+                      title={wish.title}
+                    />
+                    <Link
+                      className={styles["secondary-button"]}
+                      href={navigationPath(
+                        `${wishPath(listId, wishId)}/copy`,
+                        section,
+                      )}
+                    >
+                      <Copy size={18} aria-hidden="true" /> {t("Copy wish")}
+                    </Link>
+                  </>
                 )}
                 {wish.canManage && (
                   <Link
@@ -167,6 +205,7 @@ export default async function WishPage({
 
           <div className={styles["wish-controls"]}>
             <ActionForm
+              secondary
               action={changeWishState.bind(null, listId, wishId)}
               label={wish.hidden ? t("Show wish") : t("Hide wish")}
               pendingLabel={t("Updating…")}
@@ -185,6 +224,7 @@ export default async function WishPage({
               />
             </ActionForm>
             <ActionForm
+              secondary
               action={changeWishState.bind(null, listId, wishId)}
               label={
                 wish.fulfilledAt ? t("Reopen wish") : t("Mark as fulfilled")
@@ -204,14 +244,21 @@ export default async function WishPage({
                 value={wish.fulfilledAt ? "reopen" : "fulfill"}
               />
             </ActionForm>
+            <Link
+              className={styles["secondary-button"]}
+              href={navigationPath(`${wishPath(listId, wishId)}/move`, section)}
+            >
+              <ArrowRightLeft size={18} aria-hidden="true" /> {t("Move wish")}
+            </Link>
           </div>
-
-          <Link
-            className={styles["icon-label"]}
-            href={`${wishPath(listId, wishId)}/delete`}
-          >
-            <Trash2 size={18} aria-hidden="true" /> {t("Delete wish")}
-          </Link>
+          <div className={styles.actions}>
+            <Link
+              className={styles["icon-label"]}
+              href={`${wishPath(listId, wishId)}/delete`}
+            >
+              <Trash2 size={18} aria-hidden="true" /> {t("Delete wish")}
+            </Link>
+          </div>
         </section>
       )}
     </section>

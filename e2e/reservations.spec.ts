@@ -35,10 +35,11 @@ const image = async (page: Page) => {
     .locator('input[type="file"]')
     .setInputFiles({ name: "notebook.png", mimeType: "image/png", buffer });
   await page
-    .getByLabel("Image description", { exact: true })
+    .getByLabel("Image description (optional)", { exact: true })
     .fill("A notebook cover");
-  await page.getByRole("button", { name: "Upload image", exact: true }).click();
+  await page.getByRole("button", { name: "Save changes", exact: true }).click();
   const uploaded = page.getByRole("img", { name: "A notebook cover" });
+  await expect(uploaded).toHaveAttribute("src", /^\/api\/media\//);
   await expectImageLoaded(uploaded);
   return (await uploaded.getAttribute("src"))!;
 };

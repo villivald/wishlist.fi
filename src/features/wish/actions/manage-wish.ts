@@ -7,16 +7,19 @@ import {
   toActionState,
 } from "@/components/form/utils/to-action-state";
 import { getAuthOrRedirect } from "@/features/auth/queries/get-auth-or-redirect";
+import { AuthError } from "@/features/auth/service/security";
 import { MAX_IMAGE_BYTES, MediaError } from "@/features/media/types";
 import { WishlistError } from "@/features/wishlist/service/lists";
 import { redirect, revalidatePath } from "@/i18n/server-navigation";
 import {
   browsePath,
+  favoritesPath,
   listPath,
   listsPath,
   reservationsPath,
   wishPath,
 } from "@/paths";
+import { transferWishes } from "../service/transfer";
 import {
   createWish,
   deleteWish,
@@ -24,6 +27,7 @@ import {
   updateWish,
   WishError,
 } from "../service/wishes";
+import type { WishTransferOperation } from "../transfer";
 
 const wishInput = (data: FormData) => ({
   title: data.get("title"),
@@ -39,7 +43,8 @@ const actionError = (error: unknown, data?: FormData) => {
   if (
     error instanceof WishError ||
     error instanceof WishlistError ||
-    error instanceof MediaError
+    error instanceof MediaError ||
+    error instanceof AuthError
   ) {
     return toActionState("ERROR", error.message, data);
   }
@@ -55,6 +60,50 @@ const refreshWish = (listId: string, wishId: string) => {
   revalidatePath(wishPath(listId, wishId));
   revalidatePath(`${wishPath(listId, wishId)}/edit`);
   revalidatePath(`${wishPath(listId, wishId)}/delete`);
+};
+
+export const submitWishTransfer = async (
+  operation: WishTransferOperation,
+  listId: string,
+  wishId: string,
+  requestId: string,
+  _state: ActionState,
+  data: FormData,
+) => {
+  const { user } = await getAuthOrRedirect();
+  const destinations = data
+    .getAll("destination")
+    .map((choice) => (typeof choice === "string" ? choice.split(":") : []));
+  let results: Awaited<ReturnType<typeof transferWishes>>;
+
+  try {
+    results = await transferWishes(
+      user.id,
+      listId,
+      wishId,
+      operation,
+      destinations,
+      requestId,
+    );
+  } catch (error) {
+    return actionError(error);
+  }
+
+  if (operation === "move") {
+    refreshWish(listId, wishId);
+    revalidatePath(favoritesPath);
+  }
+  for (const result of results) refreshWish(result.destinationId, result.id);
+  if (results.length > 1)
+    return await redirect(
+      `${wishPath(listId, wishId)}?copies=${results.length}`,
+      "replace",
+    );
+  const result = results[0]!;
+  return await redirect(
+    `${wishPath(result.destinationId, result.id)}?${operation === "move" ? "moved" : "copied"}=1`,
+    "replace",
+  );
 };
 
 export const addWish = async (

@@ -18,6 +18,7 @@ import { Link } from "@/i18n/navigation";
 import { useText } from "@/i18n/use-text";
 import styles from "./cards.module.css";
 import { CopyLink } from "./copy-link";
+import { CopyWishLink } from "./copy-wish-link";
 
 export function OwnershipBadge({
   user = false,
@@ -43,6 +44,7 @@ export function CardActions({
   sharingPath,
   settingsPath,
   canCopy = false,
+  canCopyWish = false,
   section,
   productUrl,
   canReserve = false,
@@ -55,6 +57,7 @@ export function CardActions({
   sharingPath?: string;
   settingsPath?: string;
   canCopy?: boolean;
+  canCopyWish?: boolean;
   section?: DetailSection;
   productUrl?: string | null;
   canReserve?: boolean;
@@ -73,6 +76,9 @@ export function CardActions({
         {t("View")} <ArrowRight size={18} aria-hidden="true" />
       </Link>
       <div className={styles.tools}>
+        {canCopyWish && (
+          <CopyWishLink path={path} title={title} section={section} />
+        )}
         {favorite && <FavoriteButton {...favorite} title={title} />}
         {canReserve && (
           <Link

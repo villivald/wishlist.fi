@@ -193,7 +193,7 @@ export default async function ListPage({
                 )}
                 {list.canManage && (
                   <Link
-                    className={styles.button}
+                    className={styles["secondary-button"]}
                     href={listSettingsPath(list.id)}
                     aria-label={t("List settings")}
                   >

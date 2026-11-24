@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { navigationPath } from "@/app/_navigation/navigation-path";
 import { CardMedia, CardMediaLink } from "@/components/cards/card-media";
 import cardStyles from "@/components/cards/cards.module.css";
+import { CopyWishLink } from "@/components/cards/copy-wish-link";
 import { WishCard } from "@/components/cards/wish-card";
 import { createWishTones } from "@/components/cards/wish-tones";
 import { ActionForm } from "@/components/form/action-form";
@@ -159,6 +160,11 @@ export default async function ReservationsPage({
                 <WishPriority priority={wish.priority} />
               </div>
               <div className={groupStyles["card-footer"]}>
+                <CopyWishLink
+                  path={wishPath(wish.wishlist.id, wish.id)}
+                  title={wish.title}
+                  section="reservations"
+                />
                 {groupEnabled ? (
                   <Link
                     className={styles["secondary-button"]}

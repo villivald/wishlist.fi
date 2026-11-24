@@ -35,6 +35,7 @@ export default defineConfig({
     "**/list-visibility.spec.ts",
     "**/list-access.spec.ts",
     "**/list-header.spec.ts",
+    "**/wish-transfers.spec.ts",
     "**/feedback.spec.ts",
     "**/mobile-feedback.spec.ts",
     "**/premium.spec.ts",

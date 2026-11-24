@@ -162,6 +162,7 @@ export async function WishCollection({
                       }
                     : undefined
                 }
+                canCopyWish={!!userId}
                 productUrl={wish.externalUrl}
                 canReserve={
                   reservationsEnabled &&

@@ -1,13 +1,22 @@
+import { randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { EMPTY_ACTION_STATE } from "@/components/form/utils/to-action-state";
 import { readableImage } from "@/features/media/service/media";
+import { mediaStorage } from "@/features/media/service/storage";
+import { readImageVariant } from "@/features/media/service/variants";
+import { imageVariantPath } from "@/features/media/variants";
 import {
   addWish,
   changeWishState,
   editWish,
   removeWish,
+  submitWishTransfer,
 } from "@/features/wish/actions/manage-wish";
+import {
+  readWishDestinations,
+  transferWishes,
+} from "@/features/wish/service/transfer";
 import {
   createWish,
   deleteWish,
@@ -35,6 +44,25 @@ vi.mock("next/navigation", () => ({
     throw new Error(`REDIRECT:${path}`);
   },
 }));
+
+const transferWish = async (
+  userId: string,
+  listId: string,
+  wishId: string,
+  operation: "move" | "copy",
+  destination: unknown,
+  requestId?: string,
+) =>
+  (
+    await transferWishes(
+      userId,
+      listId,
+      wishId,
+      operation,
+      [destination],
+      requestId,
+    )
+  )[0]!;
 
 let listId: string;
 
@@ -506,4 +534,421 @@ it("filters reserved wishes before pagination and preserves viewer permissions",
   expect(
     (await readListWishes(listId, null, { reserved: true })).wishes,
   ).toEqual([]);
+});
+
+describe("wish transfers", () => {
+  it("validates the whole batch before copying and deduplicates retries per destination", async () => {
+    const first = await createWishlist("e2e-owner", {
+      title: "First",
+      description: "",
+    });
+    const second = await createWishlist("e2e-owner", {
+      title: "Second",
+      description: "",
+    });
+    const bytes = await sharp({
+      create: { width: 80, height: 40, channels: 3, background: "blue" },
+    })
+      .png()
+      .toBuffer();
+    const wish = await createWish(
+      "e2e-owner",
+      listId,
+      { title: "Batch wish" },
+      { bytes, alt: "Map" },
+    );
+    const key = randomUUID();
+    const submit = (
+      destinations: unknown[],
+      operation: "move" | "copy" = "copy",
+    ) =>
+      transferWishes(
+        "e2e-owner",
+        listId,
+        wish.id,
+        operation,
+        destinations,
+        key,
+      );
+    const targets = [
+      [first.id, "PUBLIC"],
+      [second.id, "PUBLIC"],
+    ];
+    await expect(
+      submit([targets[0], ["e2e-private-list", "PRIVATE"]]),
+    ).rejects.toThrow("destination list");
+    await expect(submit(targets, "move")).rejects.toThrow("one destination");
+    expect(await prisma.wish.count({ where: { title: "Batch wish" } })).toBe(1);
+    const [copies, replay] = await Promise.all([
+      submit(targets),
+      submit(targets),
+    ]);
+    expect(replay).toEqual(copies);
+    expect(
+      await prisma.media.count({
+        where: {
+          wishId: { in: copies.map((copy) => copy.id) },
+          alt: "Map",
+          state: "READY",
+        },
+      }),
+    ).toBe(2);
+    expect(copies.map((copy) => copy.destinationId)).toEqual([
+      first.id,
+      second.id,
+    ]);
+    expect(await prisma.wish.count({ where: { title: "Batch wish" } })).toBe(3);
+  });
+  it("moves the same wish, image and favorite to an administered list", async () => {
+    const destination = "e2e-private-list";
+    await prisma.membership.create({
+      data: { wishlistId: destination, userId: "e2e-owner", role: "ADMIN" },
+    });
+    const bytes = await sharp({
+      create: { width: 80, height: 40, channels: 3, background: "blue" },
+    })
+      .png()
+      .toBuffer();
+    const wish = await createWish(
+      "e2e-owner",
+      listId,
+      {
+        title: "Move the original",
+        hidden: true,
+        price: "0",
+        currency: "GBP",
+      },
+      { bytes, alt: "Original image" },
+    );
+    await transitionWish("e2e-owner", listId, wish.id, "fulfill");
+    const original = await prisma.wish.findUniqueOrThrow({
+      where: { id: wish.id },
+    });
+    const image = await prisma.media.findUniqueOrThrow({
+      where: { wishId: wish.id },
+    });
+    const favorite = await prisma.favoriteWish.create({
+      data: { userId: "e2e-owner", wishId: wish.id },
+    });
+    expect(await readWishDestinations("e2e-owner", listId, "move")).toEqual([
+      expect.objectContaining({ id: destination }),
+    ]);
+    expect(await readWishDestinations("e2e-owner", listId, "copy")).toEqual([]);
+    const form = new FormData();
+    form.set("destination", `${destination}:PRIVATE`);
+
+    await expect(
+      submitWishTransfer(
+        "move",
+        listId,
+        wish.id,
+        randomUUID(),
+        EMPTY_ACTION_STATE,
+        form,
+      ),
+    ).rejects.toThrow(
+      `REDIRECT:/en/lists/${destination}/wishes/${wish.id}?moved=1`,
+    );
+    expect(await readWish(listId, wish.id, "e2e-owner")).toBeNull();
+    expect(
+      await prisma.wish.findUniqueOrThrow({ where: { id: wish.id } }),
+    ).toEqual({
+      ...original,
+      wishlistId: destination,
+      updatedAt: expect.any(Date),
+    });
+    expect(await readableImage(image.id, "e2e-owner")).not.toBeNull();
+    expect(await readableImage(image.id, null)).toBeNull();
+    expect(
+      await prisma.favoriteWish.findUnique({ where: { id: favorite.id } }),
+    ).toEqual(favorite);
+  });
+
+  it("copies readable wishes into owned lists, preserving fields and image bytes independently", async () => {
+    const destination = "e2e-private-list";
+    const bytes = await sharp({
+      create: { width: 860, height: 430, channels: 3, background: "blue" },
+    })
+      .png()
+      .toBuffer();
+    const original = await createWish(
+      "e2e-owner",
+      listId,
+      {
+        title: "Copy with an image",
+        description: "Exact details",
+        externalUrl: "https://shop.example/exact",
+        price: "0",
+        currency: "USD",
+        priority: "5",
+      },
+      { bytes, alt: "Blue rectangle" },
+    );
+    const reservation = await prisma.reservation.create({
+      data: { wishId: original.id, userId: "e2e-member", groupEnabled: true },
+    });
+    const source = await prisma.wish.findUniqueOrThrow({
+      where: { id: original.id },
+      include: { image: true },
+    });
+    const requestId = randomUUID();
+    const copy = await transferWish(
+      "e2e-member",
+      listId,
+      original.id,
+      "copy",
+      [destination, "PRIVATE"],
+      requestId,
+    );
+    await expect(
+      transferWish(
+        "e2e-member",
+        listId,
+        original.id,
+        "copy",
+        [destination, "PRIVATE"],
+        requestId,
+      ),
+    ).resolves.toEqual(copy);
+    expect(
+      await prisma.wish.count({
+        where: { wishlistId: destination, title: source.title },
+      }),
+    ).toBe(1);
+    const saved = await prisma.wish.findUniqueOrThrow({
+      where: { id: copy.id },
+      include: { image: true, reservations: true },
+    });
+    expect(saved).toMatchObject({
+      title: source.title,
+      description: source.description,
+      externalUrl: source.externalUrl,
+      priceMinor: 0,
+      currency: "USD",
+      priority: 5,
+      authorId: "e2e-member",
+      wishlistId: destination,
+      reservations: [],
+      image: {
+        alt: source.image!.alt,
+        width: source.image!.width,
+        height: source.image!.height,
+        bytes: source.image!.bytes,
+        variantWidths: source.image!.variantWidths,
+      },
+    });
+    expect(saved.image!.id).not.toBe(source.image!.id);
+    expect(saved.image!.pathname).not.toBe(source.image!.pathname);
+    for (const width of [null, ...source.image!.variantWidths]) {
+      const originalBytes = await readImageVariant(source.image!, width);
+      const copyBytes = await readImageVariant(saved.image!, width);
+      expect(copyBytes).not.toBeNull();
+      expect(copyBytes).toEqual(originalBytes);
+    }
+    expect(
+      await prisma.reservation.findUnique({ where: { id: reservation.id } }),
+    ).toEqual(reservation);
+
+    await deleteWish("e2e-owner", listId, original.id);
+    expect(await readableImage(saved.image!.id, "e2e-member")).not.toBeNull();
+    expect(await readableImage(saved.image!.id, null)).toBeNull();
+  });
+
+  it("preserves hidden and fulfilled status when an admin copies a wish", async () => {
+    const destination = await createWishlist("e2e-owner", {
+      title: "Hidden destination",
+      description: "",
+      publication: "DRAFT",
+    });
+    const wish = await createWish("e2e-owner", listId, {
+      title: "Secret",
+      hidden: true,
+    });
+    await transitionWish("e2e-owner", listId, wish.id, "fulfill");
+    const original = await readWish(listId, wish.id, "e2e-owner");
+    const copy = await transferWish(
+      "e2e-owner",
+      listId,
+      wish.id,
+      "copy",
+      [destination.id, "HIDDEN"],
+      randomUUID(),
+    );
+    expect(await readWish(destination.id, copy.id, "e2e-owner")).toMatchObject({
+      hidden: true,
+      fulfilledAt: original?.fulfilledAt,
+    });
+    expect(await readWish(destination.id, copy.id, null)).toBeNull();
+    expect(await readWish(listId, wish.id, "e2e-owner")).toEqual(original);
+  });
+
+  it("rejects the wrong source, view-only move access, unowned copies, and stale destinations", async () => {
+    const destination = "e2e-private-list";
+    const wish = await createWish("e2e-owner", listId, { title: "Stay here" });
+    const form = new FormData();
+    form.set("destination", `${destination}:PRIVATE`);
+    auth.userId = "e2e-member";
+    const move = submitWishTransfer.bind(
+      null,
+      "move",
+      listId,
+      wish.id,
+      randomUUID(),
+      EMPTY_ACTION_STATE,
+    );
+    expect(await move(form)).toMatchObject({
+      status: "ERROR",
+      message: expect.stringContaining("permission"),
+    });
+
+    auth.userId = "e2e-owner";
+    const membership = await prisma.membership.create({
+      data: { wishlistId: destination, userId: "e2e-owner", role: "MEMBER" },
+    });
+    expect(await move(form)).toMatchObject({
+      status: "ERROR",
+      message: expect.stringContaining("destination list"),
+    });
+    await prisma.membership.update({
+      where: { id: membership.id },
+      data: { role: "ADMIN" },
+    });
+    await expect(
+      transferWish(
+        "e2e-owner",
+        listId,
+        wish.id,
+        "copy",
+        [destination, "PRIVATE"],
+        randomUUID(),
+      ),
+    ).rejects.toThrow("destination list");
+    await expect(
+      transferWish("e2e-owner", listId, wish.id, "move", [listId, "PUBLIC"]),
+    ).rejects.toThrow("different");
+    await expect(
+      transferWish("e2e-owner", listId, "e2e-wish", "move", [
+        destination,
+        "PRIVATE",
+      ]),
+    ).rejects.toThrow("permission");
+    await expect(
+      transferWish("e2e-owner", listId, wish.id, "move", [
+        destination,
+        "PUBLIC",
+      ]),
+    ).rejects.toThrow("has changed");
+    await prisma.membership.delete({ where: { id: membership.id } });
+    expect(await move(form)).toMatchObject({
+      status: "ERROR",
+      message: expect.stringContaining("destination list"),
+    });
+    expect(await readWish(listId, wish.id, "e2e-owner")).not.toBeNull();
+
+    await transitionWish("e2e-owner", listId, wish.id, "hide");
+    await expect(
+      transferWish(
+        "e2e-member",
+        listId,
+        wish.id,
+        "copy",
+        [destination, "PRIVATE"],
+        randomUUID(),
+      ),
+    ).rejects.toThrow("unavailable");
+    await expect(
+      transferWish(
+        "e2e-owner",
+        destination,
+        "e2e-wish",
+        "copy",
+        [listId, "PUBLIC"],
+        randomUUID(),
+      ),
+    ).rejects.toThrow("unavailable");
+    await prisma.user.update({
+      where: { id: "e2e-owner" },
+      data: { emailVerified: false },
+    });
+    expect(
+      await readWishDestinations("e2e-owner", destination, "copy"),
+    ).toEqual([]);
+  });
+
+  it("keeps the wish and active reservation intact and safely handles repeated moves", async () => {
+    const destination = await createWishlist("e2e-owner", {
+      title: "Destination",
+      description: "",
+    });
+    const wish = await createWish("e2e-owner", listId, { title: "Reserved" });
+    const reservation = await prisma.reservation.create({
+      data: { wishId: wish.id, userId: "e2e-member" },
+    });
+    const move = () =>
+      transferWish("e2e-owner", listId, wish.id, "move", [
+        destination.id,
+        "PUBLIC",
+      ]);
+    await expect(move()).rejects.toThrow("active reservation");
+    expect(await readWish(listId, wish.id, "e2e-member")).toMatchObject({
+      isReservedByYou: true,
+    });
+    await prisma.reservation.update({
+      where: { id: reservation.id },
+      data: { endedAt: new Date() },
+    });
+    const results = await Promise.allSettled([move(), move()]);
+    expect(results.map(({ status }) => status).sort()).toEqual([
+      "fulfilled",
+      "rejected",
+    ]);
+    expect(
+      await prisma.wish.findUnique({ where: { id: wish.id } }),
+    ).toMatchObject({ wishlistId: destination.id });
+    expect(
+      await prisma.reservation.count({
+        where: { wishId: wish.id, endedAt: { not: null } },
+      }),
+    ).toBe(1);
+  });
+
+  it("does not save a partial copy if an image file is missing", async () => {
+    const bytes = await sharp({
+      create: { width: 400, height: 200, channels: 3, background: "blue" },
+    })
+      .png()
+      .toBuffer();
+    const source = await createWish(
+      "e2e-owner",
+      listId,
+      { title: "Image with missing variant" },
+      { bytes, alt: "Image" },
+    );
+    const image = await prisma.media.findUniqueOrThrow({
+      where: { wishId: source.id },
+    });
+    await mediaStorage.delete(
+      image.provider,
+      imageVariantPath(image.pathname, image.variantWidths[0]!),
+    );
+    await expect(
+      transferWish(
+        "e2e-member",
+        listId,
+        source.id,
+        "copy",
+        ["e2e-private-list", "PRIVATE"],
+        randomUUID(),
+      ),
+    ).rejects.toThrow("image could not be copied");
+    expect(
+      await prisma.wish.count({
+        where: {
+          wishlistId: "e2e-private-list",
+          title: "Image with missing variant",
+        },
+      }),
+    ).toBe(0);
+    expect(await readableImage(image.id, "e2e-owner")).not.toBeNull();
+  });
 });

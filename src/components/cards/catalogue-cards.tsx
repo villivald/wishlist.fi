@@ -189,6 +189,7 @@ export function CatalogueWishCard({
       <CardActions
         path={wishPath(wish.wishlist.id, wish.id)}
         section={section}
+        canCopyWish={!!favorite}
         productUrl={wish.externalUrl}
         canReserve={wish.canReserve ?? wish.wishlist.reservationsEnabled}
         title={wish.title}

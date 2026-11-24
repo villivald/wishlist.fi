@@ -1,5 +1,5 @@
 "use client";
-import { Check, Copy } from "lucide-react";
+import { Check, Link2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { localizedPath } from "@/i18n/config";
 import { useText } from "@/i18n/use-text";
@@ -39,7 +39,7 @@ export function CopyLink({ path, title }: { path: string; title: string }) {
         {status === "copied" ? (
           <Check size={18} aria-hidden="true" />
         ) : (
-          <Copy size={18} aria-hidden="true" />
+          <Link2 size={18} aria-hidden="true" />
         )}
       </button>
       <span

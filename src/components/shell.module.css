@@ -624,8 +624,14 @@
   max-width: 70ch;
 }
 
-.form-row,
 .wish-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: 0.5rem;
+}
+
+.form-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
   align-items: start;

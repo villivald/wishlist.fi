@@ -12,6 +12,7 @@ export const storePreparedImage = async (image: {
   width: number;
   height: number;
   bytes: number;
+  variantVersion?: number;
 }) => {
   // Record every intended path before any external write, including partial failures.
   const pending = await prisma.media.create({
@@ -23,7 +24,7 @@ export const storePreparedImage = async (image: {
       height: image.height,
       bytes: image.bytes,
       variantWidths: image.variants.map(({ width }) => width),
-      variantVersion: IMAGE_VARIANT_VERSION,
+      variantVersion: image.variantVersion ?? IMAGE_VARIANT_VERSION,
       cleanupAfter: new Date(Date.now() + 60 * 60 * 1000),
     },
   });
