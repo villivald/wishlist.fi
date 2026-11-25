@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { trackSignUp } from "@/features/analytics/sign-up";
 import { getAuth } from "@/features/auth/actions/get-auth";
 import { requestVerificationEmail } from "@/features/auth/service/email-requests";
 import {
@@ -56,6 +57,7 @@ export async function GET(request: Request) {
     );
     const auth = flow.intent === "sign-in" ? null : await getAuth();
     const result = await finishGoogleSignIn(identity, flow, auth?.session?.id);
+    if (result.createdAccount) trackSignUp();
     await setSessionCookie(result.token, result.session.expiresAt);
     if (!result.user.emailVerified) {
       try {

@@ -47,6 +47,7 @@ afterAll(async () => {
 describe("Google account and session invariants", () => {
   it("creates a passwordless account once, keeps its email private, and identifies returning users by subject", async () => {
     const first = await finishGoogleSignIn(identity, signIn);
+    expect(first.createdAccount).toBe(true);
     expect(first.user).toMatchObject({
       passwordHash: null,
       emailVerified: true,
@@ -58,6 +59,7 @@ describe("Google account and session invariants", () => {
       { ...identity, email: "e2e-google-changed@gmail.com" },
       signIn,
     );
+    expect(returning.createdAccount).toBe(false);
     expect(returning.user.id).toBe(first.user.id);
     expect(returning.user.email).toBe(identity.email);
     expect(returning.user.username).toBe(first.user.username);
@@ -95,6 +97,7 @@ describe("Google account and session invariants", () => {
       connect,
       login.session.id,
     );
+    expect(linked.createdAccount).toBe(false);
     expect(linked.user.id).toBe("e2e-owner");
     expect(linked.user.passwordHash).not.toBeNull();
     expect((await validateSession(login.token)).user).toBeNull();

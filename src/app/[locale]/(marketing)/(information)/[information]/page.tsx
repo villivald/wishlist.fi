@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import styles from "@/components/shell.module.css";
+import { goatCounterEnabled } from "@/features/analytics/config";
 import { googleTagManagerEnabled } from "@/features/privacy/config";
 import { Link } from "@/i18n/navigation";
 import { getText } from "@/i18n/server";
@@ -231,6 +232,13 @@ const information = (
             "Cookies keep you signed in, remember guest-link access, and save your language choice. Your theme preference stays in your browser.",
           )}
         </p>
+        {goatCounterEnabled() && (
+          <p>
+            {t(
+              "We use GoatCounter without cookies to measure page visits and completed sign-ups. We send general page types and sign-up counts without account details. GoatCounter uses IP addresses and browser information to compile visit statistics. Do Not Track and Global Privacy Control block this measurement.",
+            )}
+          </p>
+        )}
         <p>
           {t(
             "Optional first-party performance monitoring records numerical timings and general page types without advertising cookies, visitor identifiers, search text or list content. It excludes guest-link exchange and payment pages and respects Do Not Track and Global Privacy Control.",
@@ -287,6 +295,13 @@ const information = (
               {t("Vercel privacy notice")}
             </a>
           </li>
+          {goatCounterEnabled() && (
+            <li>
+              <a href="https://www.goatcounter.com/help/privacy">
+                {t("GoatCounter privacy policy")}
+              </a>
+            </li>
+          )}
           <li>
             <a href="https://neon.com/privacy-policy">
               {t("Neon privacy notice")}

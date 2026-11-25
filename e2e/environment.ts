@@ -32,6 +32,8 @@ export const testEnvironment = {
     "e2e-ideas-experience:children, e2e-ideas-budget,e2e-ideas-draft:books,e2e-ideas-private:books,e2e-ideas-archived:books,e2e-ideas-reservable:books,e2e-ideas-experience:home,e2e-ideas-missing",
   GOOGLE_AUTH_ENABLED: "0",
   GOOGLE_TAG_MANAGER_ENABLED: "0",
+  GOATCOUNTER_ENABLED: "0",
+  GOATCOUNTER_API_TOKEN: "",
   GOOGLE_CLIENT_ID: "",
   GOOGLE_CLIENT_SECRET: "",
   MAILPIT_URL: "http://127.0.0.1:8026",

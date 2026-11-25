@@ -314,7 +314,11 @@ export const finishGoogleSignIn = async (
       });
     if (flow.sessionId)
       await tx.session.deleteMany({ where: { id: flow.sessionId } });
-    return { user: current, session };
+    return {
+      user: current,
+      session,
+      createdAccount: flow.intent === "sign-in" && !linked,
+    };
   });
   // Existing queue deduplication prevents repeat welcome messages on later sign-ins.
   if (result.user.emailVerified) {

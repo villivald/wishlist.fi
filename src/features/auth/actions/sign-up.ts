@@ -5,6 +5,7 @@ import {
   type ActionState,
   toActionState,
 } from "@/components/form/utils/to-action-state";
+import { trackSignUp } from "@/features/analytics/sign-up";
 import { Prisma } from "@/generated/prisma/client";
 import { resolveLocale } from "@/i18n/config";
 import { redirect } from "@/i18n/server-navigation";
@@ -32,6 +33,7 @@ export const signUp = async (_state: ActionState, data: FormData) => {
       ...input,
       locale: resolveLocale(await getLocale()),
     });
+    trackSignUp();
 
     await setSessionCookie(result.token, result.session.expiresAt);
     try {

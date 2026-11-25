@@ -11,6 +11,8 @@ import { NavigationProvider } from "@/app/_navigation/navigation-context";
 import { FeedbackProvider } from "@/components/form/feedback-provider";
 import styles from "@/components/shell.module.css";
 import ThemeProvider from "@/components/theme/theme-provider";
+import { goatCounterEnabled } from "@/features/analytics/config";
+import { GoatCounter } from "@/features/analytics/goat-counter";
 import { PerformanceVitals } from "@/features/performance/components/performance-vitals";
 import { performanceSampleRate } from "@/features/performance/config";
 import {
@@ -73,6 +75,7 @@ export default async function DocumentLayout({
       <body
         className={`${manrope.variable} ${fraunces.variable} ${styles.body}`}
       >
+        {goatCounterEnabled() && <GoatCounter locale={locale} />}
         <NextIntlClientProvider
           locale={locale}
           messages={clientCatalog(locale)}
