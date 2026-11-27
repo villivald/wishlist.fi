@@ -93,3 +93,8 @@
     animation: none;
   }
 }
+
+.priority-line {
+  width: 8.5rem;
+  height: 1.4rem;
+}

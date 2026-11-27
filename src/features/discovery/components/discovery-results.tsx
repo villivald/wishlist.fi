@@ -3,6 +3,7 @@ import {
   CataloguePersonCard,
   CatalogueWishCard,
 } from "@/components/cards/catalogue-cards";
+import { wishGridClassName } from "@/components/cards/wish-card";
 import { createWishTones } from "@/components/cards/wish-tones";
 import styles from "@/components/shell.module.css";
 import { useText } from "@/i18n/use-text";
@@ -83,7 +84,7 @@ export function DiscoveryResults({
   );
   return (
     <ul
-      className={styles["list-grid"]}
+      className={"wishes" in result ? wishGridClassName : styles["list-grid"]}
       aria-label={
         result.filters.view === "users"
           ? t("People with public lists")

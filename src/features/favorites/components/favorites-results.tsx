@@ -3,6 +3,7 @@ import {
   CataloguePersonCard,
   CatalogueWishCard,
 } from "@/components/cards/catalogue-cards";
+import { wishGridClassName } from "@/components/cards/wish-card";
 import { createWishTones } from "@/components/cards/wish-tones";
 import shell from "@/components/shell.module.css";
 import { getText } from "@/i18n/server";
@@ -16,7 +17,10 @@ export async function FavoritesResults({
   const t = await getText();
   const tones = createWishTones((result.wishes ?? []).map((wish) => wish.id));
   return (
-    <ul className={shell["list-grid"]} aria-label={t("Saved favorites")}>
+    <ul
+      className={result.wishes ? wishGridClassName : shell["list-grid"]}
+      aria-label={t("Saved favorites")}
+    >
       {result.lists?.map((list) => (
         <CatalogueListCard
           key={list.id}

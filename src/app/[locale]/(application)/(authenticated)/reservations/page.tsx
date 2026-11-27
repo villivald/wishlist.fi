@@ -3,7 +3,8 @@ import { navigationPath } from "@/app/_navigation/navigation-path";
 import { CardMedia, CardMediaLink } from "@/components/cards/card-media";
 import cardStyles from "@/components/cards/cards.module.css";
 import { CopyWishLink } from "@/components/cards/copy-wish-link";
-import { WishCard } from "@/components/cards/wish-card";
+import { WishCard, wishGridClassName } from "@/components/cards/wish-card";
+import { WishCardFacts } from "@/components/cards/wish-card-facts";
 import { createWishTones } from "@/components/cards/wish-tones";
 import { ActionForm } from "@/components/form/action-form";
 import { SuccessMessage } from "@/components/form/success-message";
@@ -18,8 +19,6 @@ import {
 } from "@/features/reservation/components/reservations-frame";
 import { readGroupInvitations } from "@/features/reservation/service/groups";
 import { readMyReservations } from "@/features/reservation/service/reservations";
-import { WishPriority } from "@/features/wish/components/wish-priority";
-import { formatWishPrice } from "@/features/wish/utils/money";
 import { Link } from "@/i18n/navigation";
 import { getText } from "@/i18n/server";
 import {
@@ -120,7 +119,7 @@ export default async function ReservationsPage({
         </SuccessMessage>
       )}
       {reservations.length ? (
-        <ul className={styles["list-grid"]}>
+        <ul className={wishGridClassName}>
           {reservations.map(({ id, wish, groupEnabled }) => (
             <WishCard key={id} tone={tones[wish.id]}>
               <CardMediaLink
@@ -142,7 +141,7 @@ export default async function ReservationsPage({
                   {wish.title}
                 </Link>
               </h2>
-              <p>
+              <p className={cardStyles["wish-context"]}>
                 {t("In")}{" "}
                 <Link
                   href={navigationPath(
@@ -153,13 +152,14 @@ export default async function ReservationsPage({
                   {wish.wishlist.title}
                 </Link>
               </p>
-              <div className={cardStyles["wish-facts"]}>
-                <p className={styles.price}>
-                  {formatWishPrice(wish.priceMinor, wish.currency, t)}
-                </p>
-                <WishPriority priority={wish.priority} />
-              </div>
-              <div className={groupStyles["card-footer"]}>
+              <WishCardFacts
+                priceMinor={wish.priceMinor}
+                currency={wish.currency}
+                priority={wish.priority}
+              />
+              <div
+                className={`${groupStyles["card-footer"]} ${cardStyles["wish-actions"]}`}
+              >
                 <CopyWishLink
                   path={wishPath(wish.wishlist.id, wish.id)}
                   title={wish.title}

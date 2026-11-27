@@ -3,7 +3,8 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { CardMedia } from "@/components/cards/card-media";
 import cardStyles from "@/components/cards/cards.module.css";
-import { WishCard } from "@/components/cards/wish-card";
+import { WishCard, wishGridClassName } from "@/components/cards/wish-card";
+import { WishCardFacts } from "@/components/cards/wish-card-facts";
 import { createWishTones } from "@/components/cards/wish-tones";
 import styles from "@/components/shell.module.css";
 import { GUEST_COOKIE } from "@/features/guest/http";
@@ -13,8 +14,6 @@ import {
 } from "@/features/guest/service/access";
 import { MediaImage } from "@/features/media/components/media-image";
 import { ListTheme } from "@/features/premium/components/list-theme";
-import { WishPriority } from "@/features/wish/components/wish-priority";
-import { formatWishPrice } from "@/features/wish/utils/money";
 import { localizedPath } from "@/i18n/config";
 import { getText } from "@/i18n/server";
 import { guestListPath, guestWishPath } from "@/paths";
@@ -73,7 +72,7 @@ export default async function GuestListPage({
       )}
       <h2>{t("Available wishes")}</h2>
       {wishes.length ? (
-        <ul className={styles["list-grid"]}>
+        <ul className={wishGridClassName}>
           {wishes.map((wish) => (
             <WishCard key={wish.id} tone={tones[wish.id]}>
               <a
@@ -96,12 +95,11 @@ export default async function GuestListPage({
                   {wish.title}
                 </a>
               </h3>
-              <div className={cardStyles["wish-facts"]}>
-                <p className={styles.price}>
-                  {formatWishPrice(wish.priceMinor, wish.currency, t)}
-                </p>
-                <WishPriority priority={wish.priority} />
-              </div>
+              <WishCardFacts
+                priceMinor={wish.priceMinor}
+                currency={wish.currency}
+                priority={wish.priority}
+              />
             </WishCard>
           ))}
         </ul>

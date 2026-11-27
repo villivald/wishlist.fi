@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import cardStyles from "@/components/cards/cards.module.css";
+import { wishGridClassName } from "@/components/cards/wish-card";
 import shell from "@/components/shell.module.css";
 import {
   AccountDetails,
@@ -50,7 +51,7 @@ function SkeletonCards({
   wish?: boolean;
 }) {
   return (
-    <div className={shell["list-grid"]}>
+    <div className={wish ? wishGridClassName : shell["list-grid"]}>
       {[0, 1, 2].map((index) => (
         <div
           key={index}
@@ -58,9 +59,22 @@ function SkeletonCards({
           data-wish-tone={wish ? ["butter", "lilac", "sage"][index] : undefined}
         >
           {media && <div className={`${styles.block} ${styles.media}`} />}
-          <div className={`${styles.block} ${styles.title}`} />
-          <div className={`${styles.block} ${styles.line}`} />
-          <div className={styles["card-actions"]}>
+          <div
+            className={`${styles.block} ${styles.title} ${wish ? cardStyles["wish-heading"] : ""}`}
+          />
+          {wish ? (
+            <div className={cardStyles["wish-facts"]}>
+              <div className={cardStyles["wish-facts-layout"]}>
+                <div className={`${styles.block} ${styles.line}`} />
+                <div className={`${styles.block} ${styles["priority-line"]}`} />
+              </div>
+            </div>
+          ) : (
+            <div className={`${styles.block} ${styles.line}`} />
+          )}
+          <div
+            className={`${styles["card-actions"]} ${wish ? cardStyles["wish-actions"] : ""}`}
+          >
             <div className={`${styles.block} ${styles.button}`} />
             <div className={`${styles.block} ${styles.button}`} />
           </div>

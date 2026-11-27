@@ -5,12 +5,10 @@ import { accounts, resetFixtures, testPrisma } from "./seed";
 
 const listId = "e2e-favorites-list";
 const wishId = "e2e-favorites-wish";
-const signIn = async (page: Page) => {
+const signIn = async (page: Page, account = accounts.member) => {
   await page.goto("/en/sign-in");
-  await page.getByLabel("Email", { exact: true }).fill(accounts.member.email);
-  await page
-    .getByLabel("Password", { exact: true })
-    .fill(accounts.member.password);
+  await page.getByLabel("Email", { exact: true }).fill(account.email);
+  await page.getByLabel("Password", { exact: true }).fill(account.password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).toHaveURL(/\/lists$/);
 };
@@ -58,6 +56,110 @@ test.beforeEach(async () => {
   } finally {
     await prisma.$disconnect();
   }
+});
+
+test("Open stays aligned with four, five and six wish actions", async ({
+  browserName,
+  page,
+}) => {
+  const db = testPrisma();
+  try {
+    const four = await db.wish.create({
+      data: {
+        title: "Reserved notebook",
+        wishlistId: listId,
+        reservations: {
+          create: { userId: "e2e-member" },
+        },
+      },
+    });
+    const five = await db.wish.create({
+      data: { title: "Blank notebook", wishlistId: listId },
+    });
+    await db.favoriteWish.createMany({
+      data: [four.id, five.id, wishId].map((id) => ({
+        userId: "e2e-owner",
+        wishId: id,
+      })),
+    });
+  } finally {
+    await db.$disconnect();
+  }
+  await signIn(page, accounts.owner);
+  for (const locale of ["fi", "en"]) {
+    await page.goto(`/${locale}/favorites?view=wishes`);
+    await page.evaluate(() => document.fonts.ready);
+    const cards = page.locator("li[data-wish-tone]");
+    await expect(cards).toHaveCount(3);
+    for (const { width, enlarged } of [
+      { width: 1280, enlarged: false },
+      { width: 1140, enlarged: false },
+      { width: 650, enlarged: false },
+      { width: 320, enlarged: true },
+    ]) {
+      await page.setViewportSize({ width, height: 850 });
+      await page.evaluate((large) => {
+        document.documentElement.style.fontSize = large ? "200%" : "";
+      }, enlarged);
+      const counts = [];
+      for (const card of await cards.all()) {
+        const open = card.getByRole("link", {
+          name: locale === "fi" ? /^Avaa: / : /^View /,
+        });
+        await expect(open).toBeVisible();
+        const link = (await open.boundingBox())!;
+        const strip = open.locator("..").locator('[class*="_tools"]');
+        const geometry = await strip.evaluate((el) => ({
+          scrolls: el.scrollWidth > el.clientWidth + 1,
+          targets: Array.from(el.querySelectorAll("a, button"), (action) => {
+            const { x, y, width, height } = action.getBoundingClientRect();
+            return { x, y, width, height };
+          }),
+        }));
+        counts.push(geometry.targets.length);
+        if (!enlarged) expect(geometry.scrolls).toBe(false);
+        for (const target of geometry.targets) {
+          expect(target.x).toBeGreaterThanOrEqual(link.x + link.width - 1);
+          expect(target.y + target.height / 2).toBeCloseTo(
+            link.y + link.height / 2,
+            0,
+          );
+          expect(target.width).toBeGreaterThanOrEqual(32);
+          expect(target.height).toBeGreaterThanOrEqual(44);
+        }
+        if (geometry.targets.length === 6 && width === 1140) {
+          await open.locator("..").screenshot({
+            path: test.info().outputPath(`six-actions-${locale}.png`),
+          });
+        }
+      }
+      expect(counts.sort()).toEqual([4, 5, 6]);
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+    }
+  }
+  const six = page.locator("li[data-wish-tone]").filter({
+    has: page.getByRole("heading", { name: "Favorite notebook", exact: true }),
+  });
+  const open = six.getByRole("link", { name: /^View / });
+  const strip = open.locator("..").locator('[class*="_tools"]');
+  const tabKey =
+    browserName === "webkit" && process.platform === "darwin"
+      ? "Alt+Tab"
+      : "Tab";
+  await open.focus();
+  for (const action of await strip.locator("a, button").all()) {
+    await page.keyboard.press(tabKey);
+    // Firefox can focus the scrollable strip before its first action.
+    if (await strip.evaluate((el) => el === document.activeElement)) {
+      await page.keyboard.press(tabKey);
+    }
+    await expect(action).toBeFocused();
+  }
+  expect(await strip.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
 });
 
 test("Favorites opens the first available category and respects explicit empty tabs", async ({

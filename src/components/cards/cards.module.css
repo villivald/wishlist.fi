@@ -240,11 +240,6 @@
   font-weight: 650;
 }
 
-.wish-summary {
-  display: grid;
-  gap: 0.4rem;
-}
-
 .wish-list {
   display: flex;
   align-items: center;
@@ -258,11 +253,34 @@
 }
 
 .wish-facts {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
+  container-type: inline-size;
+  min-width: 0;
+}
+
+.wish-facts-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: space-between;
+  align-items: start;
+  height: 100%;
   gap: 0.4rem 0.75rem;
+  line-height: 1.6rem;
+}
+
+.wish-facts-layout > [data-missing="true"] {
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+@container (width >= 17rem) {
+  .wish-facts-layout {
+    grid-template: auto / minmax(0, 1fr) auto;
+  }
+
+  .wish-facts-layout > :only-child {
+    grid-column: 1 / -1;
+  }
 }
 
 .ownership {
@@ -413,6 +431,100 @@
 .wish-card[data-wish-tone] > h3 {
   font-size: var(--card-title-size);
   line-height: var(--card-title-line-height);
+}
+
+.wish-card .actions {
+  position: relative;
+  flex-wrap: nowrap;
+  gap: 0.25rem;
+}
+
+.wish-card .open-action {
+  flex: none;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+
+.wish-card .tools {
+  flex-wrap: nowrap;
+  gap: 0;
+  margin-inline-start: auto;
+  overflow-x: auto;
+}
+
+.wish-card .tools:empty {
+  display: none;
+}
+
+/* Keep the glyphs at their original size and share the available space equally. */
+.wish-card .tools > * {
+  flex: 0 1 48px;
+  width: 48px;
+  min-width: 32px;
+}
+
+.wish-card .tools .icon-action {
+  min-width: 32px;
+  padding-inline: 0;
+}
+
+.wish-card .tools > :is(form, .copy-control) {
+  position: static;
+  display: flex;
+}
+
+.wish-card .tools > :is(form, .copy-control) > button {
+  width: 100%;
+}
+
+.wish-card .tools :focus-visible {
+  outline-offset: -3px;
+}
+
+@supports (grid-template-rows: subgrid) {
+  /* The inter-card gutter belongs to each complete card, not its internal rows. */
+  .wish-grid:not(:empty) {
+    --wish-grid-gutter: 2.5rem;
+
+    row-gap: 0;
+    margin-block-end: calc(-1 * var(--wish-grid-gutter));
+  }
+
+  .wish-grid > .wish-card {
+    display: grid;
+    grid-row: span 6;
+    grid-template-rows: subgrid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 0;
+    margin-block-end: var(--wish-grid-gutter);
+  }
+
+  .wish-grid > .wish-card > :is(h2, h3, .wish-heading) {
+    grid-row: 2;
+    margin-block-start: 0.75rem;
+  }
+
+  .wish-grid > .wish-card > :is(.wish-list, .wish-context) {
+    grid-row: 3;
+    margin-block-start: 0.5rem;
+  }
+
+  .wish-grid > .wish-card > .wish-facts {
+    grid-row: 4;
+    align-self: stretch;
+    margin-block-start: 0.75rem;
+  }
+
+  .wish-grid > .wish-card > .states {
+    grid-row: 5;
+    margin-block-start: 0.75rem;
+  }
+
+  .wish-grid > .wish-card > :is(.actions, .wish-actions) {
+    grid-row: 6;
+    margin-block-start: 0.75rem;
+  }
 }
 
 .wish-card .media {

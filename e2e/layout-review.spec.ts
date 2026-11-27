@@ -151,3 +151,136 @@ for (const locale of ["en", "fi"]) {
     }
   });
 }
+
+test("wish card facts, badges and actions align across mixed content", async ({
+  page,
+}) => {
+  const db = testPrisma();
+  try {
+    await db.wish.createMany({
+      data: [
+        {
+          id: "e2e-card-zero",
+          title: "A",
+          priceMinor: 0,
+          currency: "EUR" as const,
+          priority: 3,
+        },
+        {
+          title: "B – The Making of the Middle Ages by John Haywood",
+          priority: 5,
+        },
+        {
+          title: "C",
+          priceMinor: 2_147_483_647,
+          currency: "GBP" as const,
+          priority: 1,
+          hidden: true,
+        },
+        { title: "D" },
+      ].map((wish) => ({
+        ...wish,
+        wishlistId: listId,
+        authorId: "e2e-owner",
+      })),
+    });
+    await db.reservation.create({
+      data: { wishId: "e2e-card-zero", userId: "e2e-member" },
+    });
+  } finally {
+    await db.$disconnect();
+  }
+
+  await page.goto("/en/sign-in");
+  await page.getByLabel("Email", { exact: true }).fill(accounts.owner.email);
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill(accounts.owner.password);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page).toHaveURL(/\/lists$/);
+
+  for (const locale of ["fi", "en"]) {
+    await page.emulateMedia({
+      colorScheme: locale === "fi" ? "dark" : "light",
+    });
+    await page.setViewportSize({ width: 1280, height: 850 });
+    await page.goto(`/${locale}/lists/${listId}?sort=title`);
+    const cards = page.locator("li[data-wish-tone]");
+    await expect(cards).toHaveCount(4);
+    await page.evaluate(() => document.fonts.ready);
+    const first = cards.nth(0);
+    const second = cards.nth(1);
+    const third = cards.nth(2);
+    await expect(first.locator("[data-missing=false]")).toContainText("0");
+    await expect(second.locator("[data-missing=true]")).toHaveText(
+      locale === "fi" ? "Hintaa ei ole lisätty" : "No price added",
+    );
+    await expect(cards.nth(3).locator("[role=img]")).toHaveCount(0);
+    await expect(
+      first.getByText(locale === "fi" ? "Varattu" : "Reserved", {
+        exact: true,
+      }),
+    ).toBeVisible();
+
+    for (const selector of [
+      "[data-missing]",
+      '[class*="states"]',
+      '[class*="actions"]',
+    ]) {
+      const top = (card: Locator) =>
+        card
+          .locator(selector)
+          .first()
+          .evaluate((el) => el.getBoundingClientRect().top);
+      expect(
+        Math.abs((await top(first)) - (await top(second))),
+      ).toBeLessThanOrEqual(1);
+      expect(
+        Math.abs((await top(first)) - (await top(third))),
+      ).toBeLessThanOrEqual(1);
+    }
+    await expectAligned(
+      first.locator("[role=img]"),
+      second.locator("[role=img]"),
+    );
+    await cards
+      .first()
+      .locator("..")
+      .screenshot({ path: test.info().outputPath(`wish-cards-${locale}.png`) });
+    const fourthTop = await cards
+      .nth(3)
+      .evaluate((el) => el.getBoundingClientRect().top);
+    const firstBottom = await first.evaluate(
+      (el) => el.getBoundingClientRect().bottom,
+    );
+    expect(fourthTop - firstBottom).toBeCloseTo(40, 0);
+
+    await page.setViewportSize({ width: 650, height: 850 });
+    await expectAligned(
+      first.locator("[role=img]"),
+      second.locator("[role=img]"),
+    );
+    const narrowPrice = await first.locator("[data-missing]").boundingBox();
+    const narrowPriority = await first.locator("[role=img]").boundingBox();
+    expect(narrowPriority!.y).toBeGreaterThanOrEqual(
+      narrowPrice!.y + narrowPrice!.height,
+    );
+
+    await page.setViewportSize({ width: 320, height: 760 });
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = "200%";
+    });
+    await expect(page.locator("html")).toHaveJSProperty(
+      "scrollWidth",
+      await page.evaluate(() => document.documentElement.clientWidth),
+    );
+    const price = await first.locator("[data-missing]").boundingBox();
+    const stars = await first.locator("[role=img]").boundingBox();
+    expect(stars!.y).toBeGreaterThanOrEqual(price!.y + price!.height);
+    expect(
+      await cards.evaluateAll((items) =>
+        items.every((item) => item.scrollWidth <= item.clientWidth + 1),
+      ),
+    ).toBe(true);
+  }
+});

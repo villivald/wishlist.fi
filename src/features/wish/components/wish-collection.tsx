@@ -6,8 +6,8 @@ import {
 import { AutoFilterForm } from "@/components/auto-filter-form";
 import { CardActions } from "@/components/cards/card-actions";
 import { CardMedia, CardMediaLink } from "@/components/cards/card-media";
-import cardStyles from "@/components/cards/cards.module.css";
-import { WishCard } from "@/components/cards/wish-card";
+import { WishCard, wishGridClassName } from "@/components/cards/wish-card";
+import { WishCardFacts } from "@/components/cards/wish-card-facts";
 import { WishStatus } from "@/components/cards/wish-status";
 import { createWishTones } from "@/components/cards/wish-tones";
 import styles from "@/components/shell.module.css";
@@ -17,8 +17,6 @@ import { Link } from "@/i18n/navigation";
 import { getText } from "@/i18n/server";
 import { listPath, newWishPath, wishPath } from "@/paths";
 import { readListWishes } from "../service/wishes";
-import { formatWishPrice } from "../utils/money";
-import { WishPriority } from "./wish-priority";
 
 export async function WishCollection({
   listId,
@@ -116,7 +114,7 @@ export async function WishCollection({
       </AutoFilterForm>
 
       {wishes.length ? (
-        <ul className={styles["list-grid"]}>
+        <ul className={wishGridClassName}>
           {wishes.map((wish) => (
             <WishCard
               key={wish.id}
@@ -134,12 +132,11 @@ export async function WishCollection({
                   {wish.title}
                 </Link>
               </h3>
-              <div className={cardStyles["wish-facts"]}>
-                <p className={styles.price}>
-                  {formatWishPrice(wish.priceMinor, wish.currency, t)}
-                </p>
-                <WishPriority priority={wish.priority} />
-              </div>
+              <WishCardFacts
+                priceMinor={wish.priceMinor}
+                currency={wish.currency}
+                priority={wish.priority}
+              />
               {(canManage || wish.isReserved) && (
                 <WishStatus
                   hidden={wish.hidden}

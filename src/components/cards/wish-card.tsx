@@ -3,6 +3,8 @@ import shell from "@/components/shell.module.css";
 import styles from "./cards.module.css";
 import type { WishTone } from "./wish-tones";
 
+export const wishGridClassName = `${shell["list-grid"]} ${styles["wish-grid"]}`;
+
 export function WishCard({
   children,
   tone = "butter",

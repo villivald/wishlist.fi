@@ -3,6 +3,7 @@ import {
   type DetailSection,
   navigationPath,
 } from "@/app/_navigation/navigation-path";
+import { WishCardFacts } from "@/components/cards/wish-card-facts";
 import { getCuratedWishlistCopy } from "@/features/discovery/service/curated-lists";
 import type {
   discoverLists,
@@ -13,8 +14,6 @@ import { FavoriteButton } from "@/features/favorites/components/favorite-button"
 import type { FavoriteTarget } from "@/features/favorites/types";
 import { ListTheme } from "@/features/premium/components/list-theme";
 import { PremiumBadge } from "@/features/premium/components/premium-badge";
-import { WishPriority } from "@/features/wish/components/wish-priority";
-import { formatWishPrice } from "@/features/wish/utils/money";
 import { Link } from "@/i18n/navigation";
 import { useText } from "@/i18n/use-text";
 import { listPath, listSettingsPath, sharingPath, wishPath } from "@/paths";
@@ -147,7 +146,6 @@ export function CatalogueWishCard({
   section?: DetailSection;
   favorite?: FavoriteTarget;
 }) {
-  const t = useText();
   return (
     <WishCard tone={tone} reserved={wish.isReserved}>
       <CardMediaLink
@@ -164,20 +162,17 @@ export function CatalogueWishCard({
           {wish.title}
         </Link>
       </h2>
-      <div className={cardStyles["wish-summary"]}>
-        <p className={cardStyles["wish-list"]}>
-          <List size={16} aria-hidden="true" />
-          <Link href={navigationPath(listPath(wish.wishlist.id), section)}>
-            {wish.wishlist.title}
-          </Link>
-        </p>
-        <div className={cardStyles["wish-facts"]}>
-          <p className={styles.price}>
-            {formatWishPrice(wish.priceMinor, wish.currency, t)}
-          </p>
-          <WishPriority priority={wish.priority} />
-        </div>
-      </div>
+      <p className={cardStyles["wish-list"]}>
+        <List size={16} aria-hidden="true" />
+        <Link href={navigationPath(listPath(wish.wishlist.id), section)}>
+          {wish.wishlist.title}
+        </Link>
+      </p>
+      <WishCardFacts
+        priceMinor={wish.priceMinor}
+        currency={wish.currency}
+        priority={wish.priority}
+      />
       {(wish.hidden || wish.fulfilledAt || wish.isReserved) && (
         <WishStatus
           hidden={wish.hidden}
