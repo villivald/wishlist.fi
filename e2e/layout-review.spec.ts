@@ -76,7 +76,7 @@ for (const locale of ["en", "fi"]) {
       {
         name: "sharing",
         path: `/lists/${listId}/sharing`,
-        selector: 'fieldset[class*="audience"]',
+        selector: 'fieldset:has(> label > input[name="access"])',
       },
       {
         name: "plan",
@@ -109,7 +109,21 @@ for (const locale of ["en", "fi"]) {
           route.name === "sharing"
             ? panels.locator(":scope > label").nth(1)
             : panels.locator(":scope > :nth-child(2)");
-        await expectAligned(first, second);
+        if (route.name === "sharing") {
+          const choices = panels.locator(":scope > label");
+          await expect(choices).toHaveCount(3);
+          const panel = (await panels.boundingBox())!;
+          let bottom = panel.y;
+          for (const choice of await choices.all()) {
+            await expect(choice).toBeVisible();
+            const bounds = (await choice.boundingBox())!;
+            expect(bounds.width).toBeCloseTo(panel.width, 0);
+            expect(bounds.y).toBeGreaterThanOrEqual(bottom);
+            bottom = bounds.y + bounds.height;
+          }
+        } else {
+          await expectAligned(first, second);
+        }
         if (route.name === "profile") {
           const profile = await first.boundingBox();
           const avatar = await second

@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { pageSize } from "@/utils/pagination";
 
 export const peopleOrderedByName = async (search: string, page: number) => {
   const schema =
@@ -27,6 +28,6 @@ export const peopleOrderedByName = async (search: string, page: number) => {
       )
       AND (person."name" ILIKE ${pattern} OR person."username" ILIKE ${pattern})
     ORDER BY LOWER(COALESCE(person."name", person."username")), person."username"
-    LIMIT 21 OFFSET ${(page - 1) * 20}
+    LIMIT ${pageSize + 1} OFFSET ${(page - 1) * pageSize}
   `);
 };

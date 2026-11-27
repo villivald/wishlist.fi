@@ -8,6 +8,7 @@ import { readableLists } from "@/features/wishlist/service/access";
 import { lockWishlist } from "@/features/wishlist/service/lock";
 import { readWishCounts } from "@/features/wishlist/service/wish-counts";
 import { prisma } from "@/lib/prisma";
+import { maxSearchPage, pageSize } from "@/utils/pagination";
 import type { FavoriteKind } from "../types";
 import { favoriteInput, parseFavoritesQuery } from "./schemas";
 
@@ -129,8 +130,8 @@ export const readFavorites = async (
   const where = { userId, user: { emailVerified: true } };
   const pagination = {
     orderBy: [{ createdAt: "desc" as const }, { id: "desc" as const }],
-    skip: (page - 1) * 20,
-    take: 21,
+    skip: (page - 1) * pageSize,
+    take: pageSize + 1,
   };
 
   if (view === "lists") {
@@ -162,14 +163,14 @@ export const readFavorites = async (
     });
     const counts = await readWishCounts(
       userId,
-      rows.slice(0, 20).map(({ wishlist }) => wishlist.id),
+      rows.slice(0, pageSize).map(({ wishlist }) => wishlist.id),
     );
     return {
-      view,
+      view: "lists" as const,
       page,
-      hasNextPage: rows.length > 20 && page < 1000,
+      hasNextPage: rows.length > pageSize && page < maxSearchPage,
       lists: rows
-        .slice(0, 20)
+        .slice(0, pageSize)
         .map(({ wishlist: { wishes, ownerId, memberships, ...list } }) => ({
           ...list,
           isOwner: ownerId === userId,
@@ -228,10 +229,10 @@ export const readFavorites = async (
       },
     });
     return {
-      view,
+      view: "wishes" as const,
       page,
-      hasNextPage: rows.length > 20 && page < 1000,
-      wishes: rows.slice(0, 20).map(
+      hasNextPage: rows.length > pageSize && page < maxSearchPage,
+      wishes: rows.slice(0, pageSize).map(
         ({
           wish: {
             reservations,
@@ -288,15 +289,17 @@ export const readFavorites = async (
     },
   });
   return {
-    view,
+    view: "people" as const,
     page,
-    hasNextPage: rows.length > 20 && page < 1000,
-    people: rows.slice(0, 20).map(({ person: { id, _count, ...person } }) => ({
-      ...person,
-      publicListCount: _count.ownedLists,
-      showPremiumBadge: person.showPremiumBadge && _count.premiumGrants > 0,
-      isViewer: id === userId,
-    })),
+    hasNextPage: rows.length > pageSize && page < maxSearchPage,
+    people: rows
+      .slice(0, pageSize)
+      .map(({ person: { id, _count, ...person } }) => ({
+        ...person,
+        publicListCount: _count.ownedLists,
+        showPremiumBadge: person.showPremiumBadge && _count.premiumGrants > 0,
+        isViewer: id === userId,
+      })),
   };
 };
 

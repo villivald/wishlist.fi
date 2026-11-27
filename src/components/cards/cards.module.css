@@ -446,6 +446,8 @@
 }
 
 .wish-card .tools {
+  --wish-action-min-width: 32px;
+
   flex-wrap: nowrap;
   gap: 0;
   margin-inline-start: auto;
@@ -460,11 +462,11 @@
 .wish-card .tools > * {
   flex: 0 1 48px;
   width: 48px;
-  min-width: 32px;
+  min-width: var(--wish-action-min-width);
 }
 
 .wish-card .tools .icon-action {
-  min-width: 32px;
+  min-width: var(--wish-action-min-width);
   padding-inline: 0;
 }
 
@@ -477,8 +479,18 @@
   width: 100%;
 }
 
+.wish-card .tools :is(.copy-status, [role="alert"]):not(:empty) {
+  max-width: 100%;
+}
+
 .wish-card .tools :focus-visible {
   outline-offset: -3px;
+}
+
+@media (width <= 400px) {
+  .wish-card .tools {
+    --wish-action-min-width: 44px;
+  }
 }
 
 @supports (grid-template-rows: subgrid) {
@@ -541,6 +553,11 @@
 .wish-card .edge-badge {
   inset-block-start: 1.5rem;
   inset-inline-end: 1.5rem;
+}
+
+.wish-card:has(> .edge-badge) .placeholder {
+  justify-content: safe center;
+  padding-block-start: 2.25rem;
 }
 
 @media (hover: hover) and (pointer: fine) {

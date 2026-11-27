@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { emailSchema } from "@/features/auth/service/schemas";
+import { maxPage } from "@/utils/pagination";
 
 export const listAccessSchema = z.enum(["HIDDEN", "PRIVATE", "PUBLIC"]);
 const invitationAccess = {
@@ -29,5 +30,5 @@ export const roleSchema = z.enum(["MEMBER", "ADMIN"]);
 export const visibilitySchema = z.enum(["PUBLIC", "PRIVATE"]);
 export const sharingPage = (input: unknown) => {
   const page = Number(input);
-  return Number.isSafeInteger(page) && page > 0 ? Math.min(page, 10000) : 1;
+  return Number.isSafeInteger(page) && page > 0 ? Math.min(page, maxPage) : 1;
 };

@@ -5,6 +5,7 @@ import { sharingPage } from "@/features/sharing/service/schemas";
 import { manageableLists } from "@/features/wishlist/service/access";
 import { prisma } from "@/lib/prisma";
 import { generateRandomToken, hashToken } from "@/utils/crypto";
+import { pageCount, pageSize } from "@/utils/pagination";
 import { guestLinkSchema } from "./schemas";
 
 export const createGuestLink = async (
@@ -62,19 +63,22 @@ export const readGuestLinks = async (
       title: true,
       ownerId: true,
       publication: true,
+      _count: { select: { guestLinks: true } },
       guestLinks: {
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        skip: (page - 1) * 20,
-        take: 21,
+        skip: (page - 1) * pageSize,
+        take: pageSize,
         select: { id: true, label: true, expiresAt: true, revokedAt: true },
       },
     },
   });
   if (!list) return null;
+  const { _count, ...details } = list;
+  const totalPages = pageCount(_count.guestLinks);
   return {
-    ...list,
-    guestLinks: list.guestLinks.slice(0, 20),
+    ...details,
     page,
-    hasNextPage: list.guestLinks.length > 20,
+    totalPages,
+    hasNextPage: page < totalPages,
   };
 };

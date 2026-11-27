@@ -2,6 +2,7 @@ import { publicOwners } from "@/features/discovery/service/access";
 import { readPremiumAccess } from "@/features/premium/service/entitlements";
 import { manageableLists } from "@/features/wishlist/service/access";
 import { prisma } from "@/lib/prisma";
+import { pageCount, pageSize } from "@/utils/pagination";
 import { sharingPage } from "./schemas";
 
 export const readSharing = async (
@@ -12,6 +13,7 @@ export const readSharing = async (
 ) => {
   const membersPage = sharingPage(memberPage);
   const invitationsPage = sharingPage(invitePage);
+  const pendingInvitations = { acceptedAt: null, revokedAt: null };
   const list = await prisma.wishlist.findFirst({
     where: { id: listId, ...manageableLists(userId) },
     select: {
@@ -23,6 +25,7 @@ export const readSharing = async (
       _count: {
         select: {
           memberships: true,
+          invitations: { where: pendingInvitations },
           guestLinks: {
             where: { revokedAt: null, expiresAt: { gt: new Date() } },
           },
@@ -30,8 +33,8 @@ export const readSharing = async (
       },
       memberships: {
         orderBy: [{ joinedAt: "asc" }, { id: "asc" }],
-        skip: (membersPage - 1) * 20,
-        take: 21,
+        skip: (membersPage - 1) * pageSize,
+        take: pageSize,
         select: {
           id: true,
           userId: true,
@@ -40,10 +43,10 @@ export const readSharing = async (
         },
       },
       invitations: {
-        where: { acceptedAt: null, revokedAt: null },
+        where: pendingInvitations,
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        skip: (invitationsPage - 1) * 20,
-        take: 21,
+        skip: (invitationsPage - 1) * pageSize,
+        take: pageSize,
         select: {
           id: true,
           email: true,
@@ -123,23 +126,26 @@ export const readSharing = async (
         select: { email: true, username: true },
       })
     : [];
+  const memberPages = pageCount(list._count.memberships);
+  const invitationPages = pageCount(list._count.invitations);
   return {
     ...list,
     favorites: favorites.map(({ person }) => person),
     previousRecipients: recipients,
     premium: access.plan === "PREMIUM",
-    memberships: list.memberships.slice(0, 20),
     // Never serialize the private delivery address of an account invitation.
-    invitations: list.invitations
-      .slice(0, 20)
-      .map(({ email, recipient, ...invitation }) => ({
+    invitations: list.invitations.map(
+      ({ email, recipient, ...invitation }) => ({
         ...invitation,
         recipient,
         email: recipient ? null : email,
-      })),
+      }),
+    ),
     membersPage,
     invitationsPage,
-    moreMembers: list.memberships.length > 20,
-    moreInvitations: list.invitations.length > 20,
+    memberPages,
+    invitationPages,
+    moreMembers: membersPage < memberPages,
+    moreInvitations: invitationsPage < invitationPages,
   };
 };

@@ -1,5 +1,6 @@
 import { Search } from "lucide-react";
 import type { Metadata } from "next";
+import { Pagination } from "@/components/pagination";
 import styles from "@/components/shell.module.css";
 import { getAuth } from "@/features/auth/actions/get-auth";
 import { BrowseControls } from "@/features/discovery/components/discovery-controls";
@@ -18,7 +19,6 @@ import {
   parseDiscoveryQuery,
 } from "@/features/discovery/service/query";
 import { readFavoriteIds } from "@/features/favorites/service/favorites";
-import { Link } from "@/i18n/navigation";
 import { getText } from "@/i18n/server";
 import browseStyles from "./browse.module.css";
 
@@ -47,7 +47,7 @@ export default async function BrowsePage({
       : view === "wishes"
         ? await discoverWishes(query, user?.id)
         : await discoverLists(query, user?.id);
-  const { filters, hasNextPage } = result;
+  const { filters, totalPages } = result;
   const curatedLists = "curatedLists" in result ? result.curatedLists : [];
   const canFavorite = !!user?.emailVerified;
   const favoriteIds = await readFavoriteIds(
@@ -116,22 +116,13 @@ export default async function BrowsePage({
           favoriteIds={favoriteIds}
         />
       )}
-      {!filters.error && (filters.page > 1 || hasNextPage) && (
-        <nav className={styles.actions} aria-label={t("Browse pages")}>
-          {filters.page > 1 && (
-            <Link href={discoveryUrl(filters, filters.page - 1)}>
-              {t("Previous page")}
-            </Link>
-          )}
-          <span>
-            {t("Page")} {filters.page}
-          </span>
-          {hasNextPage && (
-            <Link href={discoveryUrl(filters, filters.page + 1)}>
-              {t("Next page")}
-            </Link>
-          )}
-        </nav>
+      {!filters.error && (
+        <Pagination
+          label={t("Browse pages")}
+          page={filters.page}
+          total={totalPages}
+          href={(page) => discoveryUrl(filters, page)}
+        />
       )}
     </section>
   );

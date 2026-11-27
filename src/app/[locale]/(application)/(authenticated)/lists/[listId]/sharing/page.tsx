@@ -8,6 +8,7 @@ import { SuccessMessage } from "@/components/form/success-message";
 import managementStyles from "@/components/list-management.module.css";
 import { ListManagementNavigation } from "@/components/list-management-navigation";
 import { LocalTime } from "@/components/local-time";
+import { Pagination } from "@/components/pagination";
 import styles from "@/components/shell.module.css";
 import { getAuthOrRedirect } from "@/features/auth/queries/get-auth-or-redirect";
 import { cancelInvitation } from "@/features/sharing/actions/manage-sharing";
@@ -211,6 +212,7 @@ export default async function SharingPage({
           <h2
             id="invitations-heading"
             className={sharingStyles["section-title"]}
+            tabIndex={-1}
           >
             <Mail size={21} aria-hidden="true" />{" "}
             <span>{t("Pending invitations")}</span>
@@ -289,23 +291,14 @@ export default async function SharingPage({
                 : t("No pending invitations.")}
           </p>
         )}
-        {(list.invitationsPage > 1 || list.moreInvitations) && (
-          <nav className={styles.actions} aria-label={t("Invitation pages")}>
-            {list.invitationsPage > 1 && (
-              <Link href={pageUrl(list.membersPage, list.invitationsPage - 1)}>
-                {t("Previous invitations")}
-              </Link>
-            )}
-            <span>
-              {t("Page")} {list.invitationsPage}
-            </span>
-            {list.moreInvitations && (
-              <Link href={pageUrl(list.membersPage, list.invitationsPage + 1)}>
-                {t("Next invitations")}
-              </Link>
-            )}
-          </nav>
-        )}
+        <Pagination
+          label={t("Invitation pages")}
+          page={list.invitationsPage}
+          total={list.invitationPages}
+          href={(target) =>
+            `${pageUrl(list.membersPage, target)}#invitations-heading`
+          }
+        />
       </section>
 
       <section
@@ -313,7 +306,11 @@ export default async function SharingPage({
         aria-labelledby="members-heading"
       >
         <div className={managementStyles.heading}>
-          <h2 id="members-heading" className={sharingStyles["section-title"]}>
+          <h2
+            id="members-heading"
+            className={sharingStyles["section-title"]}
+            tabIndex={-1}
+          >
             <Users size={21} aria-hidden="true" />{" "}
             <span>{t("People with access")}</span>{" "}
             <span className={sharingStyles.count}>
@@ -369,23 +366,14 @@ export default async function SharingPage({
             </p>
           </div>
         </details>
-        {(list.membersPage > 1 || list.moreMembers) && (
-          <nav className={styles.actions} aria-label={t("Member pages")}>
-            {list.membersPage > 1 && (
-              <Link href={pageUrl(list.membersPage - 1, list.invitationsPage)}>
-                {t("Previous members")}
-              </Link>
-            )}
-            <span>
-              {t("Page")} {list.membersPage}
-            </span>
-            {list.moreMembers && (
-              <Link href={pageUrl(list.membersPage + 1, list.invitationsPage)}>
-                {t("Next members")}
-              </Link>
-            )}
-          </nav>
-        )}
+        <Pagination
+          label={t("Member pages")}
+          page={list.membersPage}
+          total={list.memberPages}
+          href={(target) =>
+            `${pageUrl(target, list.invitationsPage)}#members-heading`
+          }
+        />
       </section>
       <section
         className={`${managementStyles.panel} ${sharingStyles["guest-section"]}`}

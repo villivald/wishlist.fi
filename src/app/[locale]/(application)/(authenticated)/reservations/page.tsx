@@ -8,6 +8,7 @@ import { WishCardFacts } from "@/components/cards/wish-card-facts";
 import { createWishTones } from "@/components/cards/wish-tones";
 import { ActionForm } from "@/components/form/action-form";
 import { SuccessMessage } from "@/components/form/success-message";
+import { Pagination } from "@/components/pagination";
 import styles from "@/components/shell.module.css";
 import { getAuthOrRedirect } from "@/features/auth/queries/get-auth-or-redirect";
 import { cancel } from "@/features/reservation/actions/manage-reservation";
@@ -49,12 +50,18 @@ export default async function ReservationsPage({
 
   const { user } = await getAuthOrRedirect();
   const query = await searchParams;
-  const [{ reservations, page, hasNextPage }, invitations] = await Promise.all([
+  const [{ reservations, page, totalPages }, invitations] = await Promise.all([
     readMyReservations(user.id, Number(query.page ?? 1)),
     readGroupInvitations(user.id, Number(query.invitationsPage ?? 1)),
   ]);
 
   const tones = createWishTones(reservations.map(({ wish }) => wish.id));
+  const pageUrl = (reservationPage: number, invitationPage: number) =>
+    `${reservationsPath}?${new URLSearchParams({
+      page: String(reservationPage),
+      invitationsPage: String(invitationPage),
+    })}`;
+
   return (
     <ReservationsFrame>
       <section
@@ -65,7 +72,9 @@ export default async function ReservationsPage({
         }
         aria-labelledby="group-invitations-heading"
       >
-        <h2 id="group-invitations-heading">{t("Group invitations")}</h2>
+        <h2 id="group-invitations-heading" tabIndex={-1}>
+          {t("Group invitations")}
+        </h2>
         {invitations.invitations.length ? (
           <ul className={styles["list-grid"]}>
             {invitations.invitations.map((invitation) => (
@@ -88,30 +97,14 @@ export default async function ReservationsPage({
         ) : (
           <p className={styles.muted}>{t("No pending group invitations.")}</p>
         )}
-        {(invitations.page > 1 || invitations.hasNextPage) && (
-          <nav
-            className={styles.actions}
-            aria-label={t("Group invitation pages")}
-          >
-            {invitations.page > 1 && (
-              <Link
-                href={`${reservationsPath}?invitationsPage=${invitations.page - 1}&page=${page}`}
-              >
-                {t("Previous page")}
-              </Link>
-            )}
-            <span>
-              {t("Page")} {invitations.page}
-            </span>
-            {invitations.hasNextPage && (
-              <Link
-                href={`${reservationsPath}?invitationsPage=${invitations.page + 1}&page=${page}`}
-              >
-                {t("Next page")}
-              </Link>
-            )}
-          </nav>
-        )}
+        <Pagination
+          label={t("Group invitation pages")}
+          page={invitations.page}
+          total={invitations.totalPages}
+          href={(target) =>
+            `${pageUrl(page, target)}#group-invitations-heading`
+          }
+        />
       </section>
       {query.canceled === "1" && (
         <SuccessMessage queryKeys={["canceled"]}>
@@ -119,7 +112,12 @@ export default async function ReservationsPage({
         </SuccessMessage>
       )}
       {reservations.length ? (
-        <ul className={wishGridClassName}>
+        <ul
+          className={wishGridClassName}
+          id="reservation-results"
+          tabIndex={-1}
+          aria-label={t("My reservations")}
+        >
           {reservations.map(({ id, wish, groupEnabled }) => (
             <WishCard key={id} tone={tones[wish.id]}>
               <CardMediaLink
@@ -191,24 +189,15 @@ export default async function ReservationsPage({
       ) : (
         <EmptyReservations page={page} />
       )}
+      <Pagination
+        label={t("Reservation pages")}
+        page={page}
+        total={totalPages}
+        href={(target) =>
+          `${pageUrl(target, invitations.page)}#reservation-results`
+        }
+      />
       <ReservationHelp />
-      {(page > 1 || hasNextPage) && (
-        <nav className={styles.actions} aria-label={t("Reservation pages")}>
-          {page > 1 && (
-            <Link href={`${reservationsPath}?page=${page - 1}`}>
-              {t("Previous page")}
-            </Link>
-          )}
-          <span>
-            {t("Page")} {page}
-          </span>
-          {hasNextPage && (
-            <Link href={`${reservationsPath}?page=${page + 1}`}>
-              {t("Next page")}
-            </Link>
-          )}
-        </nav>
-      )}
     </ReservationsFrame>
   );
 }

@@ -4,6 +4,7 @@ import { sharingPage } from "@/features/sharing/service/schemas";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { hashToken } from "@/utils/crypto";
+import { maxPage, pageSize, readPageCount } from "@/utils/pagination";
 import { guestTokenSchema } from "./schemas";
 
 const activeLink = (token: unknown): Prisma.GuestLinkWhereInput => {
@@ -75,14 +76,22 @@ export const readGuestWishes = async (
   input: unknown = 1,
 ) => {
   const page = sharingPage(input);
+  const where = guestWishAccess(listId, token) satisfies Prisma.WishWhereInput;
   const wishes = await prisma.wish.findMany({
-    where: guestWishAccess(listId, token),
+    where,
     select: wishFields,
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    skip: (page - 1) * 20,
-    take: 21,
+    skip: (page - 1) * pageSize,
+    take: pageSize + 1,
   });
-  return { wishes: wishes.slice(0, 20), page, hasNextPage: wishes.length > 20 };
+  return {
+    wishes: wishes.slice(0, pageSize),
+    page,
+    totalPages: await readPageCount(page, wishes.length, maxPage, (take) =>
+      prisma.wish.count({ where, take }),
+    ),
+    hasNextPage: wishes.length > pageSize && page < maxPage,
+  };
 };
 
 export const readGuestWish = (listId: string, wishId: string, token: unknown) =>

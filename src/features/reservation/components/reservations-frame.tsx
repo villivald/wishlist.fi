@@ -27,7 +27,7 @@ export function EmptyReservations({ page = 1 }: { page?: number }) {
   return (
     <div className={styles["empty-state"]}>
       <Gift aria-hidden="true" />
-      <h2>
+      <h2 id="reservation-results" tabIndex={-1}>
         {page === 1 ? t("No active reservations") : t("No more reservations")}
       </h2>
       <p className={styles.muted}>

@@ -6,6 +6,7 @@ import { ActionForm } from "@/components/form/action-form";
 import { SuccessMessage } from "@/components/form/success-message";
 import managementStyles from "@/components/list-management.module.css";
 import { LocalTime } from "@/components/local-time";
+import { Pagination } from "@/components/pagination";
 import styles from "@/components/shell.module.css";
 import { getAuthOrRedirect } from "@/features/auth/queries/get-auth-or-redirect";
 import { revokeLink } from "@/features/guest/actions/manage-links";
@@ -184,23 +185,12 @@ export default async function GuestLinksPage({
                 : t("No guest links yet.")}
           </p>
         )}
-        {(list.page > 1 || list.hasNextPage) && (
-          <nav className={styles.actions} aria-label={t("Guest link pages")}>
-            {list.page > 1 && (
-              <Link href={`${guestLinksPath(listId)}?page=${list.page - 1}`}>
-                {t("Previous page")}
-              </Link>
-            )}
-            <span>
-              {t("Page")} {list.page}
-            </span>
-            {list.hasNextPage && (
-              <Link href={`${guestLinksPath(listId)}?page=${list.page + 1}`}>
-                {t("Next page")}
-              </Link>
-            )}
-          </nav>
-        )}
+        <Pagination
+          label={t("Guest link pages")}
+          page={list.page}
+          total={list.totalPages}
+          href={(target) => `${guestLinksPath(listId)}?page=${target}`}
+        />
       </section>
       <details className={styles.disclosure}>
         <summary>{t("What guests can see and how to end access")}</summary>

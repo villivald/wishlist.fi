@@ -4,6 +4,7 @@ import { requirePremium } from "@/features/premium/service/entitlements";
 import { wishPreviewSelection } from "@/features/wish/service/preview";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { maxPage, pageSize, readPageCount } from "@/utils/pagination";
 import { type ListAccess, listAccess } from "../list-access";
 import { manageableLists, readableLists } from "./access";
 import { WishlistError } from "./errors";
@@ -82,21 +83,21 @@ export const readMyWishlists = async (
   page = 1,
   includeShared = false,
 ) => {
-  const pageSize = 20;
   const currentPage =
-    Number.isSafeInteger(page) && page > 0 ? Math.min(page, 10000) : 1;
-  const results = await prisma.wishlist.findMany({
-    where: {
-      archivedAt: null,
-      ...(includeShared ? {} : { ownerId: userId }),
-      memberships: {
-        some: {
-          userId,
-          user: { emailVerified: true },
-          ...(includeShared ? {} : { role: "ADMIN" }),
-        },
+    Number.isSafeInteger(page) && page > 0 ? Math.min(page, maxPage) : 1;
+  const where = {
+    archivedAt: null,
+    ...(includeShared ? {} : { ownerId: userId }),
+    memberships: {
+      some: {
+        userId,
+        user: { emailVerified: true },
+        ...(includeShared ? {} : { role: "ADMIN" }),
       },
     },
+  } satisfies Prisma.WishlistWhereInput;
+  const results = await prisma.wishlist.findMany({
+    where,
     select: {
       ...listFields,
       ownerId: true,
@@ -109,10 +110,15 @@ export const readMyWishlists = async (
     take: pageSize + 1,
   });
   const lists = results.slice(0, pageSize);
-  const counts = await readWishCounts(
-    userId,
-    lists.map(({ id }) => id),
-  );
+  const [counts, totalPages] = await Promise.all([
+    readWishCounts(
+      userId,
+      lists.map(({ id }) => id),
+    ),
+    readPageCount(currentPage, results.length, maxPage, (take) =>
+      prisma.wishlist.count({ where, take }),
+    ),
+  ]);
 
   return {
     lists: lists.map(({ wishes, memberships, ownerId, ...list }) => {
@@ -138,7 +144,8 @@ export const readMyWishlists = async (
           : [],
       };
     }),
-    hasNextPage: results.length > pageSize,
+    totalPages,
+    hasNextPage: results.length > pageSize && currentPage < maxPage,
     page: currentPage,
   };
 };

@@ -124,7 +124,7 @@ test("Open stays aligned with four, five and six wish actions", async ({
             link.y + link.height / 2,
             0,
           );
-          expect(target.width).toBeGreaterThanOrEqual(32);
+          expect(target.width).toBeGreaterThanOrEqual(enlarged ? 44 : 32);
           expect(target.height).toBeGreaterThanOrEqual(44);
         }
         if (geometry.targets.length === 6 && width === 1140) {
@@ -160,6 +160,42 @@ test("Open stays aligned with four, five and six wish actions", async ({
     await expect(action).toBeFocused();
   }
   expect(await strip.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
+
+  const badge = (await six
+    .getByText("Your list", { exact: true })
+    .boundingBox())!;
+  const placeholder = (await six
+    .locator('[class*="_placeholder-title"]')
+    .boundingBox())!;
+  expect(placeholder.y).toBeGreaterThanOrEqual(badge.y + badge.height);
+  await six.screenshot({
+    path: test.info().outputPath("ownership-badge-320-zoomed.png"),
+  });
+
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      value: {
+        writeText: () => Promise.reject(new Error("Clipboard unavailable")),
+      },
+    });
+  });
+  await six
+    .getByRole("button", { name: "Copy link to Favorite notebook" })
+    .click();
+  const message = six.getByRole("status");
+  await expect(message).toHaveText(
+    "Copy unavailable. Open this item and copy its address.",
+  );
+  const footer = (await open.locator("..").boundingBox())!;
+  const feedback = (await message.boundingBox())!;
+  expect(feedback.x).toBeGreaterThanOrEqual(footer.x - 1);
+  expect(feedback.x + feedback.width).toBeLessThanOrEqual(
+    footer.x + footer.width + 1,
+  );
+  expect(feedback.y + feedback.height).toBeLessThan(footer.y);
+  await six.screenshot({
+    path: test.info().outputPath("six-actions-copy-error-320-zoomed.png"),
+  });
 });
 
 test("Favorites opens the first available category and respects explicit empty tabs", async ({

@@ -341,9 +341,9 @@ test("revocation invalidates an already-open guest view and its image, including
     .locator('input[type="file"]')
     .setInputFiles({ name: "wish.png", mimeType: "image/png", buffer });
   await page
-    .getByLabel("Image description", { exact: true })
+    .getByLabel("Image description (optional)", { exact: true })
     .fill("Guest wish image");
-  await page.getByRole("button", { name: "Upload image", exact: true }).click();
+  await page.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(
     page.getByRole("img", { name: "Guest wish image" }),
   ).toHaveJSProperty("naturalWidth", 20);

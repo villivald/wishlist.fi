@@ -6,6 +6,7 @@ import cardStyles from "@/components/cards/cards.module.css";
 import { WishCard, wishGridClassName } from "@/components/cards/wish-card";
 import { WishCardFacts } from "@/components/cards/wish-card-facts";
 import { createWishTones } from "@/components/cards/wish-tones";
+import { Pagination } from "@/components/pagination";
 import styles from "@/components/shell.module.css";
 import { GUEST_COOKIE } from "@/features/guest/http";
 import {
@@ -42,7 +43,7 @@ export default async function GuestListPage({
     searchParams,
   ]);
   const token = cookieStore.get(GUEST_COOKIE)?.value;
-  const [list, { wishes, page, hasNextPage }] = await Promise.all([
+  const [list, { wishes, page, totalPages }] = await Promise.all([
     readGuestList(listId, token),
     readGuestWishes(listId, token, query.page),
   ]);
@@ -106,33 +107,13 @@ export default async function GuestListPage({
       ) : (
         <p>{t("No wishes available on this page.")}</p>
       )}
-      {(page > 1 || hasNextPage) && (
-        <nav className={styles.actions} aria-label={t("Guest wish pages")}>
-          {page > 1 && (
-            <a
-              href={localizedPath(
-                `${guestListPath(listId)}?page=${page - 1}`,
-                t.locale,
-              )}
-            >
-              {t("Previous page")}
-            </a>
-          )}
-          <span>
-            {t("Page")} {page}
-          </span>
-          {hasNextPage && (
-            <a
-              href={localizedPath(
-                `${guestListPath(listId)}?page=${page + 1}`,
-                t.locale,
-              )}
-            >
-              {t("Next page")}
-            </a>
-          )}
-        </nav>
-      )}
+      <Pagination
+        label={t("Guest wish pages")}
+        page={page}
+        total={totalPages}
+        href={(target) => `${guestListPath(listId)}?page=${target}`}
+        native
+      />
     </section>
   );
 }

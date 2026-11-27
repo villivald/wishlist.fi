@@ -12,6 +12,7 @@ import {
   publishBackgroundEvents,
 } from "@/lib/background-events";
 import { prisma } from "@/lib/prisma";
+import { maxPage, pageSize, readPageCount } from "@/utils/pagination";
 import { participantReservation } from "./access";
 import { queueGroupEmail } from "./group-emails";
 import { ReservationError, verifyActor } from "./reservations";
@@ -579,20 +580,21 @@ export const readGroupInvitations = async (
 ) => {
   const page =
     Number.isSafeInteger(requestedPage) && requestedPage > 0
-      ? Math.min(requestedPage, 10000)
+      ? Math.min(requestedPage, maxPage)
       : 1;
-  const rows = await prisma.reservationParticipant.findMany({
-    where: {
-      userId,
-      user: { emailVerified: true },
-      status: "PENDING",
-      expiresAt: { gt: new Date() },
-      reservation: {
-        endedAt: null,
-        groupEnabled: true,
-        wish: accessibleWish(userId),
-      },
+  const where = {
+    userId,
+    user: { emailVerified: true },
+    status: "PENDING",
+    expiresAt: { gt: new Date() },
+    reservation: {
+      endedAt: null,
+      groupEnabled: true,
+      wish: accessibleWish(userId),
     },
+  } satisfies Prisma.ReservationParticipantWhereInput;
+  const rows = await prisma.reservationParticipant.findMany({
+    where,
     select: {
       id: true,
       reservationId: true,
@@ -601,12 +603,15 @@ export const readGroupInvitations = async (
       reservation: { select: { wish: { select: { title: true } } } },
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    skip: (page - 1) * 20,
-    take: 21,
+    skip: (page - 1) * pageSize,
+    take: pageSize + 1,
   });
   return {
-    invitations: rows.slice(0, 20),
+    invitations: rows.slice(0, pageSize),
     page,
-    hasNextPage: rows.length > 20,
+    totalPages: await readPageCount(page, rows.length, maxPage, (take) =>
+      prisma.reservationParticipant.count({ where, take }),
+    ),
+    hasNextPage: rows.length > pageSize && page < maxPage,
   };
 };

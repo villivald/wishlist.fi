@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { maxSearchPage } from "@/utils/pagination";
 
 export const favoriteInput = z.object({
   kind: z.enum(["list", "wish", "person"]),
@@ -25,6 +26,6 @@ export const parseFavoritesQuery = (
             ? "people"
             : "lists",
   page: /^\d{1,4}$/.test(query.page ?? "")
-    ? Math.max(1, Math.min(1000, Number(query.page)))
+    ? Math.max(1, Math.min(maxSearchPage, Number(query.page)))
     : 1,
 });

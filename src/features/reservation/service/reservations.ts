@@ -10,6 +10,7 @@ import {
   publishBackgroundEvents,
 } from "@/lib/background-events";
 import { prisma } from "@/lib/prisma";
+import { maxPage, pageSize, readPageCount } from "@/utils/pagination";
 import { participantReservation } from "./access";
 import { queueWishReservedEmail } from "./owner-emails";
 
@@ -170,17 +171,18 @@ export const revokeReservation = async (
 export const readMyReservations = async (userId: string, requestedPage = 1) => {
   const page =
     Number.isSafeInteger(requestedPage) && requestedPage > 0
-      ? Math.min(requestedPage, 10000)
+      ? Math.min(requestedPage, maxPage)
       : 1;
-  const results = await prisma.reservation.findMany({
-    where: {
-      ...participantReservation(userId),
-      wish: {
-        hidden: false,
-        fulfilledAt: null,
-        wishlist: { ...readableLists(userId), publication: "PUBLISHED" },
-      },
+  const where = {
+    ...participantReservation(userId),
+    wish: {
+      hidden: false,
+      fulfilledAt: null,
+      wishlist: { ...readableLists(userId), publication: "PUBLISHED" },
     },
+  } satisfies Prisma.ReservationWhereInput;
+  const results = await prisma.reservation.findMany({
+    where,
     select: {
       id: true,
       groupEnabled: true,
@@ -197,13 +199,16 @@ export const readMyReservations = async (userId: string, requestedPage = 1) => {
       },
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    skip: (page - 1) * 20,
-    take: 21,
+    skip: (page - 1) * pageSize,
+    take: pageSize + 1,
   });
 
   return {
-    reservations: results.slice(0, 20),
+    reservations: results.slice(0, pageSize),
     page,
-    hasNextPage: results.length > 20,
+    totalPages: await readPageCount(page, results.length, maxPage, (take) =>
+      prisma.reservation.count({ where, take }),
+    ),
+    hasNextPage: results.length > pageSize && page < maxPage,
   };
 };

@@ -1,6 +1,7 @@
 import { List } from "lucide-react";
 import type { Metadata } from "next";
 import { SuccessMessage } from "@/components/form/success-message";
+import { Pagination } from "@/components/pagination";
 import styles from "@/components/shell.module.css";
 import { getAuthOrRedirect } from "@/features/auth/queries/get-auth-or-redirect";
 import { readFavoriteIds } from "@/features/favorites/service/favorites";
@@ -8,7 +9,6 @@ import { MyListCard } from "@/features/wishlist/components/my-list-card";
 import { MyListsControls } from "@/features/wishlist/components/my-lists-controls";
 import { MyListsWelcome } from "@/features/wishlist/components/my-lists-welcome";
 import { readMyWishlists } from "@/features/wishlist/service/lists";
-import { Link } from "@/i18n/navigation";
 import { getText } from "@/i18n/server";
 import { listsPath } from "@/paths";
 
@@ -36,7 +36,7 @@ export default async function ListsPage({
 
   const params = await searchParams;
   const { user } = await getAuthOrRedirect();
-  const { lists, page, hasNextPage } = await readMyWishlists(
+  const { lists, page, totalPages } = await readMyWishlists(
     user.id,
     Number(params.page ?? 1),
     params.shared === "1",
@@ -94,27 +94,14 @@ export default async function ListsPage({
         </div>
       )}
 
-      {(page > 1 || hasNextPage) && (
-        <nav className={styles.actions} aria-label={t("List pages")}>
-          {page > 1 && (
-            <Link
-              href={`${listsPath}?page=${page - 1}${params.shared === "1" ? "&shared=1" : ""}`}
-            >
-              {t("Previous page")}
-            </Link>
-          )}
-          <span>
-            {t("Page")} {page}
-          </span>
-          {hasNextPage && (
-            <Link
-              href={`${listsPath}?page=${page + 1}${params.shared === "1" ? "&shared=1" : ""}`}
-            >
-              {t("Next page")}
-            </Link>
-          )}
-        </nav>
-      )}
+      <Pagination
+        label={t("List pages")}
+        page={page}
+        total={totalPages}
+        href={(target) =>
+          `${listsPath}?page=${target}${params.shared === "1" ? "&shared=1" : ""}`
+        }
+      />
     </section>
   );
 }

@@ -33,7 +33,9 @@ const invite = async (
   await page
     .getByRole("textbox", { name: "Invitation email", exact: true })
     .fill(email);
-  await page.getByLabel("Invitation role").selectOption(role);
+  await page
+    .getByRole("combobox", { name: "Invitation role", exact: true })
+    .selectOption(role);
   await page
     .getByRole("button", {
       name: role === "ADMIN" ? "Invite as admin" : "Send invitation",

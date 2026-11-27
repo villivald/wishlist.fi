@@ -1,5 +1,6 @@
 import { Gift, Heart, List, Users } from "lucide-react";
 import type { Metadata } from "next";
+import { Pagination } from "@/components/pagination";
 import shell from "@/components/shell.module.css";
 import { getAuthOrRedirect } from "@/features/auth/queries/get-auth-or-redirect";
 import styles from "@/features/favorites/components/favorites.module.css";
@@ -12,6 +13,7 @@ import { parseFavoritesQuery } from "@/features/favorites/service/schemas";
 import { Link } from "@/i18n/navigation";
 import { getText } from "@/i18n/server";
 import { favoritesPath } from "@/paths";
+import { maxSearchPage, pageCount } from "@/utils/pagination";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getText();
@@ -112,19 +114,12 @@ export default async function FavoritesPage({
       ) : (
         <FavoritesResults result={result} />
       )}
-      {(result.page > 1 || result.hasNextPage) && (
-        <nav className={shell.actions} aria-label={t("Favorite pages")}>
-          {result.page > 1 && (
-            <Link href={pageUrl(result.page - 1)}>{t("Previous page")}</Link>
-          )}
-          <span>
-            {t("Page")} {result.page}
-          </span>
-          {result.hasNextPage && (
-            <Link href={pageUrl(result.page + 1)}>{t("Next page")}</Link>
-          )}
-        </nav>
-      )}
+      <Pagination
+        label={t("Favorite pages")}
+        page={result.page}
+        total={pageCount(counts[result.view], maxSearchPage)}
+        href={pageUrl}
+      />
     </section>
   );
 }

@@ -10,6 +10,7 @@ import { WishCard, wishGridClassName } from "@/components/cards/wish-card";
 import { WishCardFacts } from "@/components/cards/wish-card-facts";
 import { WishStatus } from "@/components/cards/wish-status";
 import { createWishTones } from "@/components/cards/wish-tones";
+import { Pagination } from "@/components/pagination";
 import styles from "@/components/shell.module.css";
 import { readFavoriteIds } from "@/features/favorites/service/favorites";
 import { localizedPath } from "@/i18n/config";
@@ -41,7 +42,7 @@ export async function WishCollection({
   const t = await getText();
   const reservedOnly = searchParams.reserved === "1";
 
-  const { wishes, sort, view, page, hasNextPage } = await readListWishes(
+  const { wishes, sort, view, page, totalPages } = await readListWishes(
     listId,
     userId,
     {
@@ -200,19 +201,12 @@ export async function WishCollection({
         </div>
       )}
 
-      {(page > 1 || hasNextPage) && (
-        <nav aria-label={t("Wish pages")} className={styles.actions}>
-          {page > 1 && (
-            <Link href={pageUrl(page - 1)}>{t("Previous page")}</Link>
-          )}
-          <span>
-            {t("Page")} {page}
-          </span>
-          {hasNextPage && (
-            <Link href={pageUrl(page + 1)}>{t("Next page")}</Link>
-          )}
-        </nav>
-      )}
+      <Pagination
+        label={t("Wish pages")}
+        page={page}
+        total={totalPages}
+        href={pageUrl}
+      />
     </section>
   );
 }

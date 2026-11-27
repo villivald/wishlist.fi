@@ -380,7 +380,9 @@ test("currency filters, pagination and keyboard search work in a narrow dark lay
   await filters.getByLabel("Minimum price").fill("0");
   await filters.getByLabel("Maximum price").fill("21");
   await filters.getByLabel("Minimum priority").selectOption("5");
-  await reservations.check();
+  await reservations.focus();
+  await page.keyboard.press("Space");
+  await expect(reservations).toBeChecked();
   await expect(reservations).toBeFocused();
   const results = page.getByRole("list", { name: "Public wishes" });
   await expect(results.getByRole("listitem")).toHaveCount(20);
@@ -410,6 +412,88 @@ test("currency filters, pagination and keyboard search work in a narrow dark lay
   await expect(
     page.getByRole("heading", { name: "No results found" }),
   ).toBeVisible();
+});
+
+test("numbered pagination supports direct jumps and stale-page recovery", async ({
+  page,
+}, info) => {
+  const prisma = testPrisma();
+  try {
+    await prisma.wish.createMany({
+      data: Array.from({ length: 181 }, (_, index) => ({
+        id: `e2e-pager-${index}`,
+        title: `Pagination pick ${index}`,
+        wishlistId: listId,
+        authorId: "e2e-owner",
+      })),
+    });
+  } finally {
+    await prisma.$disconnect();
+  }
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/en/browse?view=wishes&q=Pagination+pick&page=5");
+  const pager = page.getByRole("navigation", { name: "Browse pages" });
+  const current = pager.locator('[aria-current="page"]');
+  await expect(current).toHaveText(/Page 5 of 10/);
+  await expect(pager.getByRole("link", { name: "Page 10" })).toHaveAttribute(
+    "href",
+    /view=wishes.*q=Pagination\+pick.*page=10/,
+  );
+  await expect(
+    pager.getByText("…", { exact: true }).filter({ visible: true }),
+  ).toHaveCount(2);
+  await pager.screenshot({ path: info.outputPath("pagination-desktop.png") });
+  const audit = await new AxeBuilder({ page })
+    .include('nav[aria-label="Browse pages"]')
+    .analyze();
+  expect(audit.violations).toEqual([]);
+
+  const last = pager.getByRole("link", { name: "Page 10" });
+  await last.focus();
+  await expect(last).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(current).toHaveText(/Page 10 of 10/);
+  await expect(pager.getByRole("link", { name: "Next page" })).toHaveCount(0);
+  await expect(
+    page.getByRole("list", { name: "Public wishes" }).getByRole("listitem"),
+  ).toHaveCount(1);
+
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.goto("/fi/browse?view=wishes&q=Pagination+pick&page=5");
+  const compact = page.getByRole("navigation", { name: "Hakutulossivut" });
+  await page.addStyleTag({ content: "html { font-size: 200%; }" });
+  await expect(
+    compact.getByRole("link", { name: "Edellinen sivu" }),
+  ).toBeVisible();
+  await expect(
+    compact.getByRole("link", { name: "Seuraava sivu" }),
+  ).toBeVisible();
+  await expect(compact.getByRole("link", { name: "Sivu 10" })).toBeVisible();
+  await compact.screenshot({ path: info.outputPath("pagination-zoomed.png") });
+  expect(
+    await compact.evaluate((nav) => nav.scrollWidth <= nav.clientWidth),
+  ).toBe(true);
+  await page.addStyleTag({ content: "html { font-size: 100%; }" });
+  await compact.screenshot({ path: info.outputPath("pagination-mobile.png") });
+
+  await page.goto("/en/browse?view=wishes&q=Pagination+pick&page=999");
+  await expect(
+    page.getByRole("heading", { name: "No more results" }),
+  ).toBeVisible();
+  await expect(pager.getByRole("link", { name: "Last page" })).toHaveAttribute(
+    "href",
+    /page=10$/,
+  );
+  await pager.getByRole("link", { name: "Back to first page" }).click();
+  await expect(current).toHaveText(/Page 1 of 10/);
+  await expect(pager.getByRole("link", { name: "Previous page" })).toHaveCount(
+    0,
+  );
+  await page.goto("/en/browse?view=wishes&q=Pagination+pick+180");
+  await expect(pager).toHaveCount(0);
 });
 
 test("registration and email verification return to the wish without reserving automatically", async ({

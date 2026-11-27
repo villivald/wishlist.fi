@@ -47,6 +47,56 @@ test.beforeEach(async () => {
   }
 });
 
+test("independent pagers return to their own section and keep the other page", async ({
+  page,
+}) => {
+  await signIn(page);
+  for (const { url, pagers } of [
+    {
+      url: `${path()}/sharing?members=3&invitations=4`,
+      pagers: [
+        ["Member pages", "members", "invitations", "members-heading"],
+        ["Invitation pages", "invitations", "members", "invitations-heading"],
+      ],
+    },
+    {
+      url: "/en/reservations?page=3&invitationsPage=4",
+      pagers: [
+        ["Reservation pages", "page", "invitationsPage", "reservation-results"],
+        [
+          "Group invitation pages",
+          "invitationsPage",
+          "page",
+          "group-invitations-heading",
+        ],
+      ],
+    },
+  ]) {
+    for (const [label, key, other, heading] of pagers) {
+      await page.goto(url);
+      const previousOther = new URL(page.url()).searchParams.get(other);
+      await page
+        .getByRole("navigation", { name: label })
+        .getByRole("link", { name: "Back to first page" })
+        .click();
+      await expect(page).toHaveURL(
+        ({ searchParams, hash }) =>
+          searchParams.get(key) === "1" &&
+          searchParams.get(other) === previousOther &&
+          hash === `#${heading}`,
+      );
+      await expect(
+        page.locator(`#${heading}`).filter({ visible: true }),
+      ).toBeInViewport();
+      if (heading === "members-heading") {
+        await page.screenshot({
+          path: test.info().outputPath("sharing-returns-to-members.png"),
+        });
+      }
+    }
+  }
+});
+
 for (const locale of ["en", "fi"] as const) {
   const fi = locale === "fi";
   test(`${locale}: sharing privately while inviting grants access after acceptance and stays out of public responses`, async ({

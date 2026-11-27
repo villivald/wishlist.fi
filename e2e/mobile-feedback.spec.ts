@@ -79,6 +79,7 @@ test("mobile header groups actions and keeps toast dismissal within the viewport
         has: page.getByRole("heading", { name: "Admin list", exact: true }),
       });
       await expect(header).toBeVisible();
+      await page.evaluate(() => document.fonts.ready);
       await page.evaluate((enlarged) => {
         document.documentElement.classList.toggle("dark", enlarged);
         document.documentElement.style.fontSize = enlarged ? "200%" : "";
@@ -96,17 +97,38 @@ test("mobile header groups actions and keeps toast dismissal within the viewport
         const first = await sharing.boundingBox();
         const second = await settings.boundingBox();
         expect(Math.abs(first!.y - second!.y)).toBeLessThanOrEqual(1);
-        expect((await header.boundingBox())!.height).toBeLessThan(300);
+        await expect(
+          page.getByRole("heading", {
+            name: locale === "fi" ? "Toiveet" : "Wishes",
+            exact: true,
+            level: 2,
+          }),
+        ).toBeInViewport();
       }
       expect(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
         ),
       ).toBe(true);
-      const control = header.getByRole("region", {
-        name: locale === "fi" ? "Listan näkyvyys" : "List visibility",
+      const hide = header.getByRole("button", {
+        name: locale === "fi" ? "Piilota lista" : "Hide list",
+        exact: true,
       });
-      await control.getByRole("button").click();
+      if (await hide.isVisible()) {
+        await hide.click();
+      } else {
+        const name = locale === "fi" ? "Julkaise lista" : "Publish list";
+        await header.getByRole("button", { name, exact: true }).click();
+        const publish = page.getByRole("dialog", { name });
+        await publish.getByRole("checkbox").check();
+        await publish
+          .getByRole("button", {
+            name:
+              locale === "fi" ? "Tee listasta julkinen" : "Make list public",
+            exact: true,
+          })
+          .click();
+      }
       const toast = page.getByRole("status", {
         name: locale === "fi" ? "Tallennusvahvistus" : "Save confirmation",
       });
@@ -172,10 +194,7 @@ test("toast follows the visible viewport when an on-screen keyboard reduces it",
   await signIn(page);
   await page.setViewportSize({ width: 320, height: 740 });
   await page.goto(`/en${listPath}`);
-  await page
-    .getByRole("region", { name: "List visibility" })
-    .getByRole("button", { name: "Hide list", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Hide list", exact: true }).click();
   const toast = page.getByRole("status", { name: "Save confirmation" });
   await expect(toast).toBeVisible();
   await page.evaluate(() => {

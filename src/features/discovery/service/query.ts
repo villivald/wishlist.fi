@@ -1,5 +1,6 @@
 import { currencies, parsePriceMinor } from "@/features/wish/utils/money";
 import { browsePath } from "@/paths";
+import { maxSearchPage } from "@/utils/pagination";
 
 export type DiscoveryQuery = Record<string, string | string[] | undefined>;
 
@@ -25,7 +26,7 @@ export const parseDiscoveryQuery = (query: DiscoveryQuery) => {
   const requestedPage = Number(first(query.page) || 1);
   const page =
     Number.isSafeInteger(requestedPage) && requestedPage > 0
-      ? Math.min(requestedPage, 1000)
+      ? Math.min(requestedPage, maxSearchPage)
       : 1;
   const currency =
     view === "wishes"

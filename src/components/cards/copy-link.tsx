@@ -44,6 +44,8 @@ export function CopyLink({ path, title }: { path: string; title: string }) {
       </button>
       <span
         role={status === "idle" ? undefined : "status"}
+        aria-live="polite"
+        aria-atomic="true"
         className={styles["copy-status"]}
       >
         {status === "copied"

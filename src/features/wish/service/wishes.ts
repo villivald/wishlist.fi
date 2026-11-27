@@ -10,6 +10,7 @@ import { lockManagedWishlist } from "@/features/wishlist/service/lists";
 import { wishlistIdSchema } from "@/features/wishlist/service/schemas";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { maxPage, pageSize, readPageCount } from "@/utils/pagination";
 import { readableWishes } from "./access";
 import {
   wishSchema,
@@ -63,18 +64,17 @@ export const readListWishes = async (
   const requestedPage = options.page ?? 1;
   const page =
     Number.isSafeInteger(requestedPage) && requestedPage > 0
-      ? Math.min(requestedPage, 10000)
+      ? Math.min(requestedPage, maxPage)
       : 1;
 
+  const where = {
+    wishlistId: listId,
+    ...readableWishes(userId, true),
+    ...(options.reserved ? { reservations: { some: { endedAt: null } } } : {}),
+    fulfilledAt: view === "fulfilled" ? { not: null } : null,
+  } satisfies Prisma.WishWhereInput;
   const results = await prisma.wish.findMany({
-    where: {
-      wishlistId: listId,
-      ...readableWishes(userId, true),
-      ...(options.reserved
-        ? { reservations: { some: { endedAt: null } } }
-        : {}),
-      fulfilledAt: view === "fulfilled" ? { not: null } : null,
-    },
+    where,
     select: {
       ...wishFields,
       ...reservationStatus,
@@ -85,17 +85,22 @@ export const readListWishes = async (
       },
     },
     orderBy: orderings[sort],
-    skip: (page - 1) * 20,
-    take: 21,
+    skip: (page - 1) * pageSize,
+    take: pageSize + 1,
   });
 
   return {
-    wishes: results.slice(0, 20).map(({ _count, reservations, ...wish }) => ({
-      ...wish,
-      isReserved: _count.reservations > 0,
-      isReservedByYou: reservations.length > 0,
-    })),
-    hasNextPage: results.length > 20,
+    wishes: results
+      .slice(0, pageSize)
+      .map(({ _count, reservations, ...wish }) => ({
+        ...wish,
+        isReserved: _count.reservations > 0,
+        isReservedByYou: reservations.length > 0,
+      })),
+    totalPages: await readPageCount(page, results.length, maxPage, (take) =>
+      prisma.wish.count({ where, take }),
+    ),
+    hasNextPage: results.length > pageSize && page < maxPage,
     page,
     sort,
     view,
