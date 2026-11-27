@@ -2,6 +2,7 @@ import { createRemoteJWKSet, jwtVerify } from "jose";
 import { createHash, randomBytes, randomInt } from "node:crypto";
 import { z } from "zod";
 import { queueAccountEmail } from "@/features/notifications/service/queue";
+import { verifyPasswordHash } from "@/features/password/utils/hash-and-verify";
 import type { Prisma } from "@/generated/prisma/client";
 import { localizedPath, resolveLocale } from "@/i18n/config";
 import {
@@ -13,7 +14,7 @@ import { prisma } from "@/lib/prisma";
 import { accountDeletePath, accountProfilePath, listsPath } from "@/paths";
 import { generateRandomToken, hashToken } from "@/utils/crypto";
 import { safeReturnTo } from "../utils/return-to";
-import { lockUser } from "./security";
+import { consumeRateLimit, lockUser } from "./security";
 
 export const GOOGLE_FLOW_COOKIE = "wishlist-google-state";
 export const GOOGLE_FLOW_SECONDS = 600;
@@ -142,15 +143,39 @@ export const createGoogleRequest = async ({
   returnTo,
   intent,
   sessionId,
+  password,
 }: {
   locale: string;
   returnTo?: unknown;
   intent: GoogleIntent;
   sessionId?: string;
+  password?: unknown;
 }) => {
   const config = googleConfig();
   if (!config || (intent !== "sign-in" && !sessionId))
     throw new GoogleAuthError();
+  let passwordConfirmedAt: Date | null = null;
+  if (intent === "connect") {
+    const session = await prisma.session.findFirst({
+      where: {
+        id: sessionId,
+        expiresAt: { gt: new Date() },
+        user: { emailVerified: true },
+      },
+      include: { user: true },
+    });
+    if (!session) throw new GoogleAuthError();
+    await consumeRateLimit("google-connect", session.userId, 5, 15 * 60 * 1000);
+    if (
+      typeof password !== "string" ||
+      !password ||
+      password.length > 128 ||
+      !session.user.passwordHash ||
+      !(await verifyPasswordHash(session.user.passwordHash, password))
+    )
+      throw new GoogleAuthError();
+    passwordConfirmedAt = new Date();
+  }
   const state = generateRandomToken();
   const codeVerifier = randomBytes(32).toString("base64url");
   const nonce = generateRandomToken();
@@ -169,6 +194,7 @@ export const createGoogleRequest = async ({
       returnTo: destination,
       intent,
       sessionId: sessionId ?? null,
+      passwordConfirmedAt,
       expiresAt: new Date(Date.now() + GOOGLE_FLOW_SECONDS * 1000),
     },
   });
@@ -235,9 +261,16 @@ const availableGoogleUsername = async (
 
 export const finishGoogleSignIn = async (
   identity: GoogleIdentity,
-  flow: { intent: string; locale: string; sessionId: string | null },
+  flow: {
+    intent: string;
+    locale: string;
+    sessionId: string | null;
+    passwordConfirmedAt?: Date | null;
+  },
   currentSessionId?: string,
 ) => {
+  if (!["sign-in", "connect", "delete"].includes(flow.intent))
+    throw new GoogleAuthError();
   const token = generateRandomToken();
   const result = await prisma.$transaction(async (tx) => {
     // Serializes identity creation/linking across callbacks, including duplicate emails.
@@ -268,6 +301,15 @@ export const finishGoogleSignIn = async (
         !(await tx.session.count({
           where: { id: existing.id, expiresAt: { gt: new Date() } },
         }))
+      )
+        throw new GoogleAuthError();
+      // Only the existing account password can authorize enrollment. The proof
+      // lives on this single-use, session-bound request, not on the session.
+      // Password changes/resets revoke the session checked above under the lock.
+      if (
+        flow.intent === "connect" &&
+        (!flow.passwordConfirmedAt ||
+          flow.passwordConfirmedAt.getTime() <= Date.now() - GOOGLE_REAUTH_MS)
       )
         throw new GoogleAuthError();
       if (flow.intent === "delete" && !linked) throw new GoogleAuthError();

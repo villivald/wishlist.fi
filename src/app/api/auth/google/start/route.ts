@@ -38,6 +38,10 @@ export async function POST(request: Request) {
       locale,
       returnTo,
       sessionId: auth?.session?.id,
+      password:
+        intent === "connect"
+          ? (await request.formData()).get("password")
+          : undefined,
     });
     (await cookies()).set(GOOGLE_FLOW_COOKIE, flow.state, {
       httpOnly: true,

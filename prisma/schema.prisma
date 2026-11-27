@@ -100,6 +100,7 @@ model GoogleAuthRequest {
   returnTo     String   @db.VarChar(512)
   intent       String   @db.VarChar(20)
   sessionId    String?
+  passwordConfirmedAt DateTime?
   expiresAt    DateTime
 
   @@index([expiresAt])
